@@ -1,2 +1,19 @@
 package main
 
+import (
+	gin "github.com/gin-gonic/gin"
+	_ "github.com/jinzhu/gorm/dialects/mysql"
+	"github.com/seregant/golang_k8s_provisioning/config"
+	"github.com/seregant/golang_k8s_provisioning/controllers"
+	"github.com/seregant/golang_k8s_provisioning/database"
+)
+
+var conf = config.SetConfig()
+
+func main() {
+	database.DbInit()
+	penggunaController := new(controllers.Pengguna)
+
+	router := gin.Default()
+
+}
