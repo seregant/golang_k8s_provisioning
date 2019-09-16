@@ -1,7 +1,7 @@
 package models
 
 type PenggunaRes struct {
-	IDPengguna  string `form:"id" json:"id"`
+	IDPengguna  int    `form:"id" json:"id"`
 	Nama        string `form:"nama" json:"nama"`
 	Alamat      string `form:"alamat" json:"alamat"`
 	Email       string `form:"email" json:"email"`
@@ -11,5 +11,5 @@ type PenggunaRes struct {
 	DBuser      string `form:"db_username" json:"db_username"`
 	DBpass      string `form:"db_pass" json:"db_pass"`
 	ConfPath    string `form:"config_path" json:"config_path"`
-	StorageSize string `form:"storage_size" json:"storage_size"`
+	StorageSize int    `form:"storage_size" json:"storage_size"`
 }

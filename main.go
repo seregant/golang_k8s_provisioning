@@ -6,6 +6,7 @@ import (
 	"github.com/seregant/golang_k8s_provisioning/config"
 	"github.com/seregant/golang_k8s_provisioning/controllers"
 	"github.com/seregant/golang_k8s_provisioning/database"
+	"github.com/seregant/golang_k8s_provisioning/middleware"
 )
 
 var conf = config.SetConfig()
@@ -16,4 +17,13 @@ func main() {
 
 	router := gin.Default()
 
+	router.Use(middleware.CORSMiddleware())
+	api := router.Group("/api")
+	{
+		pengguna := api.Group("pengguna")
+		{
+			pengguna.GET("/", penggunaController.GetAll)
+		}
+	}
+	router.Run(":" + conf.HttpPort)
 }

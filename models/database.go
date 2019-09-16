@@ -3,7 +3,7 @@ package models
 var prefix = "dbs_"
 
 type Pengguna struct {
-	IDPengguna  string `gorm:"column:penggina_id;type:varchar(8)"`
+	IDPengguna  int    `gorm:"column:pengguna_id;type:int(8);primary_key:yes;auto_increment"`
 	Nama        string `gorm:"column:pengguna_nama;type:char(30)"`
 	Alamat      string `gorm:"column:pengguna_alamat;type:varchar(100)"`
 	Email       string `gorm:"column:pengguna_email;type:varchar(50)"`
@@ -21,10 +21,10 @@ func (Pengguna) TableName() string {
 }
 
 type ClusterNode struct {
-	IDWorker string `gorm:"column:worker_id;type:varchar(6)"`
-	CpuCores int    `gorm:"column:worker_cpu;type:int(2)"`
-	Ram      int    `gorm:"column:worker_ram;type:int(4)"`
-	Dsik     int    `gorm:"column:worker_disk;type:int(15)"`
+	IDWorker int `gorm:"column:worker_id;type:int(6);primary_key:yes;auto_increment"`
+	CpuCores int `gorm:"column:worker_cpu;type:int(2)"`
+	Ram      int `gorm:"column:worker_ram;type:int(4)"`
+	Dsik     int `gorm:"column:worker_disk;type:int(15)"`
 }
 
 func (ClusterNode) TableName() string {

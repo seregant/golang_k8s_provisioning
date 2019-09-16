@@ -1,15 +1,14 @@
 package controllers
 
 import (
-	"fmt"
+	gin "github.com/gin-gonic/gin"
 	"github.com/seregant/golang_k8s_provisioning/database"
 	"github.com/seregant/golang_k8s_provisioning/models"
-	gin "github.com/gin-gonic/gin"
 )
 
 type Pengguna struct{}
 
-func (w *Pengguna) GetAll(c *gin.Context){
+func (w *Pengguna) GetAll(c *gin.Context) {
 	var arr_response []models.PenggunaRes
 	var data []models.Pengguna
 
@@ -20,17 +19,28 @@ func (w *Pengguna) GetAll(c *gin.Context){
 
 	for _, data := range data {
 		arr_response = append(arr_response, models.PenggunaRes{
-			IDPengguna: data.IDPengguna,
-			Nama: data.Nama,
-			Alamat: data.Alamat,
-			Email: data.Email,
-			Username: data.Usename,
-			Password: data.Password,
-			DBname: data.DBname,
-			DBuser: data.DBuser,
-			DBpass: data.DBpass.
-			ConfPath: data.ClusterConf,
+			IDPengguna:  data.IDPengguna,
+			Nama:        data.Nama,
+			Alamat:      data.Alamat,
+			Email:       data.Email,
+			Username:    data.Usename,
+			Password:    data.Password,
+			DBname:      data.DBname,
+			DBuser:      data.DBuser,
+			DBpass:      data.DBpass,
+			ConfPath:    data.ClusterConf,
 			StorageSize: data.StorageSize,
-		 })
+		})
 	}
+	c.JSON(200, gin.H{
+		"status":  "200",
+		"message": "success",
+		"data":    arr_response,
+	})
+}
+
+func (w *Pengguna) Add(c *gin.Context) {
+	var db = database.DbConnect()
+	defer db.Close()
+
 }

@@ -27,7 +27,6 @@ func DbInit() {
 	defer db.Close()
 
 	db.Exec("CREATE DATABASE " + conf.DbName)
-
 	fmt.Println("Creating tables...")
 
 	db.AutoMigrate(&models.Pengguna{})
