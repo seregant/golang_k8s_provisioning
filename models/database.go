@@ -7,7 +7,7 @@ type Pengguna struct {
 	Nama        string `gorm:"column:pengguna_nama;type:char(30)"`
 	Alamat      string `gorm:"column:pengguna_alamat;type:varchar(100)"`
 	Email       string `gorm:"column:pengguna_email;type:varchar(50)"`
-	Usename     string `gorm:"column:pengguna_username;type:char(12)"`
+	Username     string `gorm:"column:pengguna_username;type:char(12)"`
 	Password    string `gorm:"column:pengguna_password;type:varchar(12)"`
 	DBname      string `gorm:"column:db_name;type:char(12)"`
 	DBuser      string `gorm:"column:db_username;type:char(12)"`

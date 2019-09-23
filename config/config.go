@@ -7,7 +7,7 @@ type Config struct {
 	DbPass   string
 	DbName   string
 	HttpPort string
-	SrvKey   string 
+	SrvKey   string
 }
 
 func SetConfig() Config {
@@ -19,7 +19,7 @@ func SetConfig() Config {
 	config.DbUser = "root"
 	config.DbName = "provisioning_owncloud"
 	config.DbPass = ""
-	config.HttpPort = "1234"
+	config.HttpPort = "1235"
 	config.SrvKey = "Aw4s_g4l4k"
 	return config
 }
