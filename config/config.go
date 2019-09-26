@@ -1,5 +1,12 @@
 package config
 
+import (
+	"log"
+
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/tools/clientcmd"
+)
+
 type Config struct {
 	Host     string
 	Port     string
@@ -22,4 +29,18 @@ func SetConfig() Config {
 	config.HttpPort = "1235"
 	config.SrvKey = "Aw4s_g4l4k"
 	return config
+}
+
+func SetK8sClient() *kubernetes.Clientset {
+	config, err := clientcmd.BuildConfigFromFlags("", "./cluster-conf")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	clientset, err := kubernetes.NewForConfig(config)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	return clientset
 }
