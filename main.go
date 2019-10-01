@@ -1,6 +1,10 @@
 package main
 
 import (
+	"fmt"
+	"log"
+	"os/exec"
+
 	gin "github.com/gin-gonic/gin"
 	_ "github.com/jinzhu/gorm/dialects/mysql"
 	"github.com/seregant/golang_k8s_provisioning/config"
@@ -35,5 +39,11 @@ func main() {
 	}
 
 	// router.Run(":" + conf.HttpPort)
-	controllers.DeployOwnCloud()
+	// controllers.DeployOwnCloud()
+
+	out, err := exec.Command("kubectl", "get", "pods").Output()
+	if err != nil {
+		log.Fatal(err)
+	}
+	fmt.Print(out)
 }

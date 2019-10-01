@@ -270,4 +270,26 @@ func createService(a *appsv1.Deployment) {
 	}
 }
 
+// func createVol() {
+// 	clientset := config.SetK8sClient()
+// 	volSpec := &apiv1.PersistentVolume{
+// 		TypeMeta: metav1.TypeMeta{
+// 			Kind:       "PersistentVolume",
+// 			APIVersion: "v1",
+// 		},
+// 		ObjectMeta: metav1.ObjectMeta{
+// 			Name: "pv-name",
+// 		},
+// 		Spec: apiv1.PersistentVolumeSpec{
+// 			Capacity: apiv1.ResourceList{
+// 				"storage": resource.MustParse("10Gi"),
+// 			},
+// 			AccessModes: []apiv1.PersistentVolumeAccessMode{
+// 				"ReadWriteMany",
+// 			},
+// 			PersistentVolumeReclaimPolicy: "Retain",
+// 		},
+// 	}
+// }
+
 func int32Ptr(i int32) *int32 { return &i }
