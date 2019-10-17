@@ -8,13 +8,14 @@ import (
 )
 
 type Config struct {
-	Host     string
-	Port     string
-	DbUser   string
-	DbPass   string
-	DbName   string
-	HttpPort string
-	SrvKey   string
+	Host        string
+	Port        string
+	DbUser      string
+	DbPass      string
+	DbName      string
+	HttpPort    string
+	SrvKey      string
+	NfsServerIp string
 }
 
 func SetConfig() Config {
@@ -28,6 +29,7 @@ func SetConfig() Config {
 	config.DbPass = ""
 	config.HttpPort = "1235"
 	config.SrvKey = "Aw4s_g4l4k"
+	config.NfsServerIp = "192.168.1.1"
 	return config
 }
 

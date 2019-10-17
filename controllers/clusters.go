@@ -12,9 +12,12 @@ import (
 	"github.com/seregant/golang_k8s_provisioning/models"
 	appsv1 "k8s.io/api/apps/v1"
 	apiv1 "k8s.io/api/core/v1"
+	v1 "k8s.io/api/core/v1"
+	"k8s.io/api/rbac/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	intstr "k8s.io/apimachinery/pkg/util/intstr"
 	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/tools/clientcmd"
 )
 
@@ -41,8 +44,18 @@ func (w *Cluster) GetNodesData(c *gin.Context) {
 	CheckClusterAvail()
 }
 
-func CheckClusterAvail() bool {
+func Provisioning(dataUser models.Pengguna) bool {
+	status := CheckClusterAvail()
+	if status {
+		if DeployDatabase(dataUser.DBpass, dataUser.DBname, dataUser.DBuser, dataUser.Username) {
+			return DeployOwnCloud(dataUser.DBpass, dataUser.DBname, dataUser.DBuser, dataUser.Password, dataUser.Username, dataUser.Username+".domain.com")
+		}
+	}
+	return false
+}
 
+func CheckClusterAvail() bool {
+	fmt.Println("cek ketersediaan cluster")
 	clientset := config.SetK8sClient()
 
 	api := clientset.CoreV1()
@@ -79,10 +92,11 @@ func CheckClusterAvail() bool {
 		capacityTotalCpu = capacityTotalCpu + intCpu
 		capacityTotalMem = capacityTotalMem + intMem
 	}
+	//print usage to log
 	// fmt.Println("cpu usage ", usageTotalCpu, " mCores of ", capacityTotalCpu*1000, "mCores")
 	// fmt.Println("memory usage : ", usageTotalMem, " Ki of", capacityTotalMem, "Ki")
 
-	if capacityTotalCpu-usageTotalCpu < 500 {
+	if (capacityTotalCpu*1000)-usageTotalCpu < 500 {
 		return false
 	} else if capacityTotalMem-usageTotalMem < 100000 {
 		return false
@@ -91,103 +105,43 @@ func CheckClusterAvail() bool {
 	}
 }
 
-func TestCluster() {
-	config, err := clientcmd.BuildConfigFromFlags("", "./cluster-conf")
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	clientset, err := kubernetes.NewForConfig(config)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	api := clientset.CoreV1()
-	var ns, label, field string
-
-	ns = "development"
-	listOptions := metav1.ListOptions{
-		LabelSelector: label,
-		FieldSelector: field,
-	}
-
-	pvcs, err := api.PersistentVolumeClaims(ns).List(listOptions)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	template := "%-32s%-8s%-8s\n"
-	fmt.Printf(template, "NAME", "STATUS", "CAPACITY")
-	for _, pvc := range pvcs.Items {
-		quant := pvc.Spec.Resources.Requests[apiv1.ResourceStorage]
-		fmt.Printf(
-			template,
-			pvc.Name,
-			string(pvc.Status.Phase),
-			quant.String())
-	}
-
-	pods, err := api.Pods(ns).List(listOptions)
-	fmt.Println()
-	fmt.Printf(template, "NAME", "STATUS", "HOST")
-	for _, pod := range pods.Items {
-		fmt.Printf(
-			template,
-			pod.Name,
-			pod.Status.Phase,
-			pod.Status.HostIP,
-		)
-	}
-	template2 := "%-32s%-15s%-15s\n"
-	nodes, err := api.Nodes().List(listOptions)
-	fmt.Println()
-	fmt.Printf(template2, "NAME", "CPU", "MEMORY")
-	for _, node := range nodes.Items {
-		fmt.Printf(
-			template2,
-			node.Name,
-			node.Status.Capacity.Cpu(),
-			node.Status.Capacity.Memory(),
-		)
-	}
-}
-
-func DeployOwnCloud() {
+//jangan lupa buat log untuk setiap deployment yang telah dilakukan di db
+func DeployOwnCloud(dbpass, dbname, dbuser, ocpass, ocuser, ocdomain string) bool {
 	clientset := config.SetK8sClient()
 	deploymentClient := clientset.AppsV1().Deployments(apiv1.NamespaceDefault)
 	deploy := &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: "nama-deployment",
+			Name: "owncloud-" + ocuser,
 		},
 		Spec: appsv1.DeploymentSpec{
 			Replicas: int32Ptr(2),
 			Selector: &metav1.LabelSelector{
 				MatchLabels: map[string]string{
-					"app": "test-deploy", //-->from user data
+					"app": "oc-app-" + ocuser, //-->from user data
 				},
 			},
 			Template: apiv1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
 					Labels: map[string]string{
-						"app": "test-deploy",
+						"app": "oc-app-" + ocuser,
 					},
 				},
 				Spec: apiv1.PodSpec{
 					Containers: []apiv1.Container{
 						{
-							Name:  "owncloud-pengguna", //-->from variable by user ID
-							Image: "owncloud/server",
+							Name:  "oc-usr" + ocuser, //-->from variable by user ID
+							Image: "owncloud/server:10.2",
 							Ports: []apiv1.ContainerPort{
 								{
-									Name:          "http",
+									Name:          "https",
 									Protocol:      apiv1.ProtocolTCP,
-									ContainerPort: 80,
+									ContainerPort: 443,
 								},
 							},
 							Env: []apiv1.EnvVar{
 								{
 									Name:  "OWNCLOUD_DOMAIN",
-									Value: "domain-variable", //-->from variable
+									Value: ocdomain, //-->from variable
 								},
 								{
 									Name:  "OWNCLOUD_DB_TYPE",
@@ -195,31 +149,39 @@ func DeployOwnCloud() {
 								},
 								{
 									Name:  "OWNCLOUD_DB_HOST",
-									Value: "103.56.205.130", //-->from variable
+									Value: "mysql-" + ocuser, //-->from variable
 								},
 								{
 									Name:  "OWNCLOUD_DB_NAME",
-									Value: "testing_indra_oc", //-->from variable
+									Value: dbname, //-->from variable
 								},
 								{
 									Name:  "OWNCLOUD_DB_USERNAME",
-									Value: "indra", //-->from variable
+									Value: "root", //-->from variable
 								},
 								{
 									Name:  "OWNCLOUD_DB_PASSWORD",
-									Value: "indra123", //-->from variable
+									Value: dbpass, //-->from variable
 								},
 								{
 									Name:  "OWNCLOUD_ADMIN_USERNAME",
-									Value: "indra", //-->from variable
+									Value: ocuser, //-->from variable
 								},
 								{
 									Name:  "OWNCLOUD_ADMIN_PASSWORD",
-									Value: "indra123", //-->from variable
+									Value: ocpass, //-->from variable
 								},
 								{
 									Name:  "OWNCLOUD_REDIS_ENABLED",
 									Value: "false", //-->from variable
+								},
+								{
+									Name:  "HTTP_PORT",
+									Value: "80",
+								},
+								{
+									Name:  "HTTPS_PORT",
+									Value: "443",
 								},
 							},
 						},
@@ -231,13 +193,80 @@ func DeployOwnCloud() {
 	fmt.Println("Creating deployment...")
 	deploymentRes, err := deploymentClient.Create(deploy)
 	if err != nil {
+		return false
 		log.Fatal(err)
 	}
-	createService(deploy)
 	fmt.Printf("Created deployment %q.\n", deploymentRes.GetObjectMeta().GetName())
+	return createService(deploy, 443)
 }
 
-func createService(a *appsv1.Deployment) {
+func DeployDatabase(dbpass, dbname, dbuser, ocuser string) bool {
+	clientset := config.SetK8sClient()
+	deploymentClient := clientset.AppsV1().Deployments(apiv1.NamespaceDefault)
+	deploy := &appsv1.Deployment{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "mysql-" + ocuser,
+		},
+		Spec: appsv1.DeploymentSpec{
+			Replicas: int32Ptr(1),
+			Selector: &metav1.LabelSelector{
+				MatchLabels: map[string]string{
+					"app": "mysql-app-" + ocuser, //-->from user data
+				},
+			},
+			Template: apiv1.PodTemplateSpec{
+				ObjectMeta: metav1.ObjectMeta{
+					Labels: map[string]string{
+						"app": "mysql-app-" + ocuser,
+					},
+				},
+				Spec: apiv1.PodSpec{
+					Containers: []apiv1.Container{
+						{
+							Name:  "mysql-usr" + ocuser, //-->from variable by user ID
+							Image: "mysql:5.7",
+							Ports: []apiv1.ContainerPort{
+								{
+									Name:          "mysql",
+									Protocol:      apiv1.ProtocolTCP,
+									ContainerPort: 3306,
+								},
+							},
+							Env: []apiv1.EnvVar{
+								{
+									Name:  "MYSQL_ROOT_PASSWORD",
+									Value: dbpass, //-->from variable
+								},
+								{
+									Name:  "MYSQL_ROOT_DATABASE",
+									Value: dbname, //-->from variable
+								},
+								{
+									Name:  "MYSQL_USER",
+									Value: dbuser, //-->from variable
+								},
+								{
+									Name:  "MYSQL_PASSWORD",
+									Value: dbpass, //-->from variable
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+	fmt.Println("Creating deployment...")
+	deploymentRes, err := deploymentClient.Create(deploy)
+	if err != nil {
+		return false
+		log.Fatal(err)
+	}
+	fmt.Printf("Created deployment %q.\n", deploymentRes.GetObjectMeta().GetName())
+	return createService(deploy, 3306)
+}
+
+func createService(a *appsv1.Deployment, port int32) bool {
 	clientset := config.SetK8sClient()
 	serviceSpec := &apiv1.Service{
 		TypeMeta: metav1.TypeMeta{
@@ -253,10 +282,10 @@ func createService(a *appsv1.Deployment) {
 			Ports: []apiv1.ServicePort{
 				apiv1.ServicePort{
 					Protocol: apiv1.ProtocolTCP,
-					Port:     80,
+					Port:     port,
 					TargetPort: intstr.IntOrString{
 						Type:   intstr.Int,
-						IntVal: 80,
+						IntVal: port,
 					},
 				},
 			},
@@ -266,30 +295,119 @@ func createService(a *appsv1.Deployment) {
 	service := clientset.CoreV1().Services("default")
 	_, err := service.Create(serviceSpec)
 	if err != nil {
+		return false
 		log.Fatal(err)
 	}
+	return true
 }
 
-// func createVol() {
-// 	clientset := config.SetK8sClient()
-// 	volSpec := &apiv1.PersistentVolume{
-// 		TypeMeta: metav1.TypeMeta{
-// 			Kind:       "PersistentVolume",
-// 			APIVersion: "v1",
-// 		},
-// 		ObjectMeta: metav1.ObjectMeta{
-// 			Name: "pv-name",
-// 		},
-// 		Spec: apiv1.PersistentVolumeSpec{
-// 			Capacity: apiv1.ResourceList{
-// 				"storage": resource.MustParse("10Gi"),
-// 			},
-// 			AccessModes: []apiv1.PersistentVolumeAccessMode{
-// 				"ReadWriteMany",
-// 			},
-// 			PersistentVolumeReclaimPolicy: "Retain",
-// 		},
-// 	}
-// }
+func CreateVol(pvName string, pvSize string) {
+	var pvConf = `
+{
+	"apiVersion": "v1",
+	"kind": "PersistentVolume",
+	"metadata": {
+		"name": "` + pvName + `"
+	},
+	"spec": {
+		"capacity": {
+			"storage": "` + pvSize + `Gi"
+		},
+		"accessModes": [{
+			"ReadwriteMany"
+		}]
+		"persistentVolumeReclaimPolicy": "Retain",
+		"nfs": {
+			"server": "` + config.SetConfig().NfsServerIp + `",
+			"path": "/opt/oc-data/users/` + pvName + `"
+		},
+		"claimRef": {
+			"namespace": "development",
+			"name": "` + pvName + `",
+		}
+	}
+}
+`
+	var pvcConf = `
+{
+	"apiVersion": "v1",
+	"kind": "PersistentVolumeClaim",
+	"metadata": {
+		"name": "` + pvName + `-pvc"
+	},
+	"spec": {
+		"accessModes": [{
+			"ReadWriteMany"
+		}]
+		"resources": {
+			"resquests": {
+				"storage": "` + pvSize + `Gi",
+			}
+		}
+	}
+}
+`
+	decode := scheme.Codecs.UniversalDeserializer().Decode
+	obj, _, err := decode([]byte(pvConf), nil, nil)
+	if err != nil {
+		fmt.Printf("%#v", err)
+	}
+
+	deployment := obj.(*apiv1.PersistentVolume)
+
+	fmt.Printf("%#v\n", deployment)
+	obj2, _, err := decode([]byte(pvcConf), nil, nil)
+	if err != nil {
+		fmt.Printf("%#v", err)
+	}
+
+	deployment2 := obj2.(*apiv1.PersistentVolume)
+
+	fmt.Printf("%#v\n", deployment2)
+}
+
+func VolumeTest() {
+	var json = `
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: pv-name
+spec:
+  capacity:
+    storage: storage-size # This size is used to match a volume to a tenents claim
+    accessModes:
+      - ReadWriteMany # Access modes are defined below
+    persistentVolumeReclaimPolicy: Retain # Reclaim policies are defined below
+    nfs:
+      server: 192.168.1.1
+      path: nfs-server-path/user-folder
+    claimRef:
+      namespace: development
+      name: pv-name
+`
+	decode := scheme.Codecs.UniversalDeserializer().Decode
+
+	obj, _, err := decode([]byte(json), nil, nil)
+	if err != nil {
+		fmt.Printf("error cuk", err)
+	}
+
+	// deployment := obj.(*v1beta1.Deployment)
+
+	// fmt.Printf("%#v\n", obj.(type))
+	switch o := obj.(type) {
+	case *v1.PersistentVolume:
+		fmt.Println("aproved")
+	case *v1beta1.Role:
+		// o is the actual role Object with all fields etc
+	case *v1beta1.RoleBinding:
+	case *v1beta1.ClusterRole:
+	case *v1beta1.ClusterRoleBinding:
+	case *v1.ServiceAccount:
+	default:
+		//o is unknown for us
+		fmt.Println(o)
+	}
+}
 
 func int32Ptr(i int32) *int32 { return &i }

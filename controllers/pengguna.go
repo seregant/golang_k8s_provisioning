@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"regexp"
 	"strconv"
 
 	gin "github.com/gin-gonic/gin"
@@ -51,6 +52,9 @@ func (w *Pengguna) Add(c *gin.Context) {
 	}
 	var db = database.DbConnect()
 	defer db.Close()
+	var penggunaQuery models.Pengguna
+	var countUsername int
+	var countEmail int
 	var formData models.Pengguna
 	formData.Nama, _ = c.GetPostForm("nama")
 	formData.Alamat, _ = c.GetPostForm("alamat")
@@ -60,15 +64,57 @@ func (w *Pengguna) Add(c *gin.Context) {
 	storageSize, _ := c.GetPostForm("storage")
 	formData.StorageSize, _ = strconv.Atoi(storageSize)
 
-	formData.DBname = "db_" + formData.Username
-	formData.DBuser = formData.Username
-	dbPass, _ := bcrypt.GenerateFromPassword([]byte(formData.Username), 12)
-	formData.DBpass = string(dbPass)
+	emailPttrn := regexp.MustCompile("^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$")
+	db.Where("pengguna_username =  ?", formData.Username).Find(&penggunaQuery).Count(&countUsername)
+	db.Where("pengguna_email = ?", formData.Email).Find(&penggunaQuery).Count(&countEmail)
 
-	db.Create(&formData)
+	if emailPttrn.MatchString(formData.Email) {
+		if countEmail == 0 {
+			if countUsername == 0 {
+				formData.DBname = "db_" + formData.Username
+				formData.DBuser = formData.Username
+				dbPass, _ := bcrypt.GenerateFromPassword([]byte(formData.Username), 12)
+				formData.DBpass = string(dbPass)
 
-	c.JSON(200, gin.H{
-		"status":  "200",
-		"message": "success",
-	})
+				db.Create(&formData)
+				//jangan lupa notifikasi setelah provisioning berjalan
+				if Provisioning(formData) {
+					c.JSON(200, gin.H{
+						"status":     "200",
+						"message":    "success",
+						"validation": "true",
+						"details":    "registration succeed",
+					})
+				} else {
+					c.JSON(200, gin.H{
+						"status":     "200",
+						"message":    "success",
+						"validation": "false",
+						"details":    "Priovisioning failed",
+					})
+				}
+			} else {
+				c.JSON(200, gin.H{
+					"status":     "200",
+					"message":    "success",
+					"validation": "false",
+					"details":    "Username already used",
+				})
+			}
+		} else {
+			c.JSON(200, gin.H{
+				"status":     "200",
+				"message":    "success",
+				"validation": "false",
+				"details":    "Email already used",
+			})
+		}
+	} else {
+		c.JSON(200, gin.H{
+			"status":     "200",
+			"message":    "success",
+			"validation": "false",
+			"details":    "Wrong email format",
+		})
+	}
 }
