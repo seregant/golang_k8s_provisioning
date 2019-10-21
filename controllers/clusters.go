@@ -114,7 +114,7 @@ func DeployOwnCloud(dbpass, dbname, dbuser, ocpass, ocuser, ocdomain string) boo
 			Name: "owncloud-" + ocuser,
 		},
 		Spec: appsv1.DeploymentSpec{
-			Replicas: int32Ptr(2),
+			Replicas: int32Ptr(1),
 			Selector: &metav1.LabelSelector{
 				MatchLabels: map[string]string{
 					"app": "oc-app-" + ocuser, //-->from user data
@@ -133,9 +133,9 @@ func DeployOwnCloud(dbpass, dbname, dbuser, ocpass, ocuser, ocdomain string) boo
 							Image: "owncloud/server:10.2",
 							Ports: []apiv1.ContainerPort{
 								{
-									Name:          "https",
+									Name:          "owncloud",
 									Protocol:      apiv1.ProtocolTCP,
-									ContainerPort: 443,
+									ContainerPort: 8080,
 								},
 							},
 							Env: []apiv1.EnvVar{
@@ -157,7 +157,7 @@ func DeployOwnCloud(dbpass, dbname, dbuser, ocpass, ocuser, ocdomain string) boo
 								},
 								{
 									Name:  "OWNCLOUD_DB_USERNAME",
-									Value: "root", //-->from variable
+									Value: dbuser, //-->from variable
 								},
 								{
 									Name:  "OWNCLOUD_DB_PASSWORD",
@@ -175,14 +175,14 @@ func DeployOwnCloud(dbpass, dbname, dbuser, ocpass, ocuser, ocdomain string) boo
 									Name:  "OWNCLOUD_REDIS_ENABLED",
 									Value: "false", //-->from variable
 								},
-								{
-									Name:  "HTTP_PORT",
-									Value: "80",
-								},
-								{
-									Name:  "HTTPS_PORT",
-									Value: "443",
-								},
+								// {
+								// 	Name:  "HTTP_PORT",
+								// 	Value: "80",
+								// },
+								// {
+								// 	Name:  "HTTPS_PORT",
+								// 	Value: "443",
+								// },
 							},
 						},
 					},
@@ -197,7 +197,7 @@ func DeployOwnCloud(dbpass, dbname, dbuser, ocpass, ocuser, ocdomain string) boo
 		log.Fatal(err)
 	}
 	fmt.Printf("Created deployment %q.\n", deploymentRes.GetObjectMeta().GetName())
-	return createService(deploy, 443)
+	return createService(deploy, 8080)
 }
 
 func DeployDatabase(dbpass, dbname, dbuser, ocuser string) bool {
@@ -238,7 +238,7 @@ func DeployDatabase(dbpass, dbname, dbuser, ocuser string) bool {
 									Value: dbpass, //-->from variable
 								},
 								{
-									Name:  "MYSQL_ROOT_DATABASE",
+									Name:  "MYSQL_DATABASE",
 									Value: dbname, //-->from variable
 								},
 								{

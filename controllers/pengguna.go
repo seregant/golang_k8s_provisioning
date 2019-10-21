@@ -5,6 +5,7 @@ import (
 	"strconv"
 
 	gin "github.com/gin-gonic/gin"
+	"github.com/seregant/golang_k8s_provisioning/config"
 	"github.com/seregant/golang_k8s_provisioning/database"
 	"github.com/seregant/golang_k8s_provisioning/models"
 	"golang.org/x/crypto/bcrypt"
@@ -34,6 +35,7 @@ func (w *Pengguna) GetAll(c *gin.Context) {
 			DBpass:      data.DBpass,
 			ConfPath:    data.ClusterConf,
 			StorageSize: data.StorageSize,
+			OcUrl:       data.OcUrl,
 		})
 	}
 	c.JSON(200, gin.H{
@@ -44,6 +46,7 @@ func (w *Pengguna) GetAll(c *gin.Context) {
 }
 
 func (w *Pengguna) Add(c *gin.Context) {
+	config := config.SetConfig()
 	if c.Request.Method == "GET" {
 		c.JSON(405, gin.H{
 			"status":  "405",
@@ -75,6 +78,7 @@ func (w *Pengguna) Add(c *gin.Context) {
 				formData.DBuser = formData.Username
 				dbPass, _ := bcrypt.GenerateFromPassword([]byte(formData.Username), 12)
 				formData.DBpass = string(dbPass)
+				formData.OcUrl = config.Domain + "/oc-client/" + formData.Username
 
 				db.Create(&formData)
 				//jangan lupa notifikasi setelah provisioning berjalan

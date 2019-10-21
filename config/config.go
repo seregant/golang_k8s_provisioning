@@ -8,14 +8,17 @@ import (
 )
 
 type Config struct {
-	Host        string
-	Port        string
-	DbUser      string
-	DbPass      string
-	DbName      string
-	HttpPort    string
-	SrvKey      string
-	NfsServerIp string
+	Host         string
+	Port         string
+	DbUser       string
+	DbPass       string
+	DbName       string
+	HttpPort     string
+	SrvKey       string
+	NfsServerIp  string
+	TokenExpTime int64
+	SecretKey    string
+	Domain       string
 }
 
 func SetConfig() Config {
@@ -30,6 +33,9 @@ func SetConfig() Config {
 	config.HttpPort = "1235"
 	config.SrvKey = "Aw4s_g4l4k"
 	config.NfsServerIp = "192.168.1.1"
+	config.TokenExpTime = 1800
+	config.SecretKey = "KJKJIds6sh"
+	config.Domain = "test-domain.com"
 	return config
 }
 

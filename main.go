@@ -15,17 +15,18 @@ func main() {
 	// database.DbInit()
 	penggunaController := new(controllers.Pengguna)
 	clusterController := new(controllers.Cluster)
+	authController := new(controllers.AuthController)
 
 	router := gin.Default()
 
 	router.Use(middleware.CORSMiddleware())
-
+	router.POST("/login", authController.GenerateToken)
 	api := router.Group("/api")
 	{
 		pengguna := api.Group("pengguna")
 		{
 			pengguna.GET("/", penggunaController.GetAll)
-			pengguna.POST("/add", penggunaController.Add)
+			pengguna.POST("/add", middleware.ValidateToken(), penggunaController.Add)
 		}
 
 		cluster := api.Group("/clusters")
