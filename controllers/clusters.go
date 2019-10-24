@@ -7,15 +7,19 @@ import (
 	"strconv"
 	"strings"
 
-	gin "github.com/gin-gonic/gin"
 	"github.com/seregant/golang_k8s_provisioning/config"
+	"github.com/seregant/golang_k8s_provisioning/database"
 	"github.com/seregant/golang_k8s_provisioning/models"
+
+	gin "github.com/gin-gonic/gin"
 	appsv1 "k8s.io/api/apps/v1"
 	apiv1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/core/v1"
-	"k8s.io/api/rbac/v1beta1"
+	v1b1ex "k8s.io/api/extensions/v1beta1"
+	v1b1rbac "k8s.io/api/rbac/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	intstr "k8s.io/apimachinery/pkg/util/intstr"
+
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/tools/clientcmd"
@@ -47,8 +51,22 @@ func (w *Cluster) GetNodesData(c *gin.Context) {
 func Provisioning(dataUser models.Pengguna) bool {
 	status := CheckClusterAvail()
 	if status {
-		if DeployDatabase(dataUser.DBpass, dataUser.DBname, dataUser.DBuser, dataUser.Username) {
-			return DeployOwnCloud(dataUser.DBpass, dataUser.DBname, dataUser.DBuser, dataUser.Password, dataUser.Username, dataUser.Username+".domain.com")
+		if DeployDatabase(
+			dataUser.DBpass,
+			dataUser.DBname,
+			dataUser.DBuser,
+			dataUser.Username,
+		) {
+			if DeployOwnCloud(
+				dataUser.DBpass,
+				dataUser.DBname,
+				dataUser.DBuser,
+				dataUser.Password,
+				dataUser.Username,
+				dataUser.Username+".domain.com",
+			) {
+				return IngressApply()
+			}
 		}
 	}
 	return false
@@ -398,11 +416,11 @@ spec:
 	switch o := obj.(type) {
 	case *v1.PersistentVolume:
 		fmt.Println("aproved")
-	case *v1beta1.Role:
+	case *v1b1rbac.Role:
 		// o is the actual role Object with all fields etc
-	case *v1beta1.RoleBinding:
-	case *v1beta1.ClusterRole:
-	case *v1beta1.ClusterRoleBinding:
+	case *v1b1rbac.RoleBinding:
+	case *v1b1rbac.ClusterRole:
+	case *v1b1rbac.ClusterRoleBinding:
 	case *v1.ServiceAccount:
 	default:
 		//o is unknown for us
@@ -410,4 +428,60 @@ spec:
 	}
 }
 
+func IngressApply() bool {
+	var dataUser []models.Pengguna
+	var db = database.DbConnect()
+	defer db.Close()
+
+	clientset := config.SetK8sClient()
+	ingressClient := clientset.ExtensionsV1beta1().Ingresses(apiv1.NamespaceDefault)
+	var ingressRules []v1b1ex.IngressRule
+	var routeList []v1b1ex.HTTPIngressPath
+
+	db.Find(&dataUser)
+
+	for _, data := range dataUser {
+		routeList = append(routeList, v1b1ex.HTTPIngressPath{
+			Backend: v1b1ex.IngressBackend{
+				ServiceName: "owncloud-" + data.Username,
+				ServicePort: intstr.FromInt(8080),
+			},
+			Path: "/" + data.OcUrl + "/?(.*)",
+		})
+	}
+
+	ingressRules = append(ingressRules, v1b1ex.IngressRule{
+		Host: config.SetConfig().Domain,
+		IngressRuleValue: v1b1ex.IngressRuleValue{
+			HTTP: &v1b1ex.HTTPIngressRuleValue{
+				Paths: routeList,
+			},
+		},
+	})
+	ingressSpec := &v1b1ex.Ingress{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "Ingress",
+			APIVersion: "extensions/v1beta1",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "oc-nginx-ingress",
+			Annotations: map[string]string{
+				"nginx.ingress.kubernetes.io/rewrite-target":     "/$1",
+				"ingress.kubernetes.io/ssl-redirect":             "false",
+				"kubernetes.io/ingress.class":                    "nginx",
+				"nginx.ingress.kubernetes.io/force-ssl-redirect": "false",
+			},
+		},
+		Spec: v1b1ex.IngressSpec{
+			Rules: ingressRules,
+		},
+	}
+
+	_, err := ingressClient.Create(ingressSpec)
+	if err != nil {
+		return false
+	} else {
+		return true
+	}
+}
 func int32Ptr(i int32) *int32 { return &i }

@@ -25,7 +25,7 @@ func main() {
 	{
 		pengguna := api.Group("pengguna")
 		{
-			pengguna.GET("/", penggunaController.GetAll)
+			pengguna.GET("/", middleware.ValidateToken(), penggunaController.GetAll)
 			pengguna.POST("/add", middleware.ValidateToken(), penggunaController.Add)
 		}
 
@@ -34,6 +34,6 @@ func main() {
 			cluster.GET("/nodes", clusterController.GetNodesData)
 		}
 	}
-
+	controllers.IngressApply()
 	router.Run(":" + conf.HttpPort)
 }
