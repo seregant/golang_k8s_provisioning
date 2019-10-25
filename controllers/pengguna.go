@@ -1,9 +1,12 @@
 package controllers
 
 import (
+	"fmt"
 	"regexp"
 	"strconv"
+	"strings"
 
+	jwt "github.com/dgrijalva/jwt-go"
 	gin "github.com/gin-gonic/gin"
 	"github.com/seregant/golang_k8s_provisioning/config"
 	"github.com/seregant/golang_k8s_provisioning/database"
@@ -120,5 +123,49 @@ func (w *Pengguna) Add(c *gin.Context) {
 			"validation": "false",
 			"details":    "Wrong email format",
 		})
+	}
+}
+
+func (w *Pengguna) GetDataPengguna(c *gin.Context) {
+	var dataUser models.Pengguna
+	var dataRes []models.PenggunaRes
+	var db = database.DbConnect()
+	defer db.Close()
+
+	bearer := c.Request.Header.Get("Authorization")
+	strSplit := strings.Split(bearer, " ")
+
+	secretKey := config.SetConfig().SecretKey
+	token, _ := jwt.Parse(strSplit[1], func(token *jwt.Token) (interface{}, error) {
+		if jwt.GetSigningMethod("HS512") != token.Method {
+			return nil, fmt.Errorf("Unexpected signing method")
+		}
+
+		return []byte(secretKey), nil
+	})
+
+	if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
+		db.Where("pengguna_email = ?", claims["email"]).Find(&dataUser)
+		dataRes = append(dataRes, models.PenggunaRes{
+			IDPengguna:  dataUser.IDPengguna,
+			Nama:        dataUser.Nama,
+			Alamat:      dataUser.Alamat,
+			Email:       dataUser.Email,
+			Username:    dataUser.Username,
+			Password:    dataUser.Password,
+			DBname:      dataUser.DBname,
+			DBuser:      dataUser.DBuser,
+			DBpass:      dataUser.DBpass,
+			ConfPath:    dataUser.ClusterConf,
+			StorageSize: dataUser.StorageSize,
+			OcUrl:       dataUser.OcUrl,
+		})
+		c.JSON(200, gin.H{
+			"status":  200,
+			"message": "success",
+			"data":    dataRes,
+		})
+	} else {
+		fmt.Println("Invalid JWT Token")
 	}
 }

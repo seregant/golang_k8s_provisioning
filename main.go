@@ -27,6 +27,7 @@ func main() {
 		{
 			pengguna.GET("/", middleware.ValidateToken(), penggunaController.GetAll)
 			pengguna.POST("/add", middleware.ValidateToken(), penggunaController.Add)
+			pengguna.GET("/u", middleware.ValidateToken(), penggunaController.GetDataPengguna)
 		}
 
 		cluster := api.Group("/clusters")
