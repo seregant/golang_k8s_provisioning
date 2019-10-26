@@ -36,9 +36,9 @@ func (w *Pengguna) GetAll(c *gin.Context) {
 			DBname:      data.DBname,
 			DBuser:      data.DBuser,
 			DBpass:      data.DBpass,
-			ConfPath:    data.ClusterConf,
 			StorageSize: data.StorageSize,
 			OcUrl:       data.OcUrl,
+			IsAdmin:     data.IsAdmin,
 		})
 	}
 	c.JSON(200, gin.H{
@@ -49,7 +49,6 @@ func (w *Pengguna) GetAll(c *gin.Context) {
 }
 
 func (w *Pengguna) Add(c *gin.Context) {
-	config := config.SetConfig()
 	if c.Request.Method == "GET" {
 		c.JSON(405, gin.H{
 			"status":  "405",
@@ -81,7 +80,7 @@ func (w *Pengguna) Add(c *gin.Context) {
 				formData.DBuser = formData.Username
 				dbPass, _ := bcrypt.GenerateFromPassword([]byte(formData.Username), 12)
 				formData.DBpass = string(dbPass)
-				formData.OcUrl = config.Domain + "/oc-client/" + formData.Username
+				formData.OcUrl = formData.Username
 
 				db.Create(&formData)
 				//jangan lupa notifikasi setelah provisioning berjalan
@@ -156,7 +155,6 @@ func (w *Pengguna) GetDataPengguna(c *gin.Context) {
 			DBname:      dataUser.DBname,
 			DBuser:      dataUser.DBuser,
 			DBpass:      dataUser.DBpass,
-			ConfPath:    dataUser.ClusterConf,
 			StorageSize: dataUser.StorageSize,
 			OcUrl:       dataUser.OcUrl,
 		})

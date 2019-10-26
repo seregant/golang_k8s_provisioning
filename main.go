@@ -14,7 +14,7 @@ func main() {
 
 	// database.DbInit()
 	penggunaController := new(controllers.Pengguna)
-	clusterController := new(controllers.Cluster)
+	clusterController := new(controllers.Nodes)
 	authController := new(controllers.AuthController)
 
 	router := gin.Default()
@@ -26,7 +26,7 @@ func main() {
 		pengguna := api.Group("pengguna")
 		{
 			pengguna.GET("/", middleware.ValidateToken(), penggunaController.GetAll)
-			pengguna.POST("/add", middleware.ValidateToken(), penggunaController.Add)
+			pengguna.POST("/add", penggunaController.Add)
 			pengguna.GET("/u", middleware.ValidateToken(), penggunaController.GetDataPengguna)
 		}
 
@@ -35,6 +35,5 @@ func main() {
 			cluster.GET("/nodes", clusterController.GetNodesData)
 		}
 	}
-	controllers.IngressApply()
 	router.Run(":" + conf.HttpPort)
 }

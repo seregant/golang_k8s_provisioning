@@ -10,7 +10,7 @@ type PenggunaRes struct {
 	DBname      string `form:"db_name" json:"db_name"`
 	DBuser      string `form:"db_username" json:"db_username"`
 	DBpass      string `form:"db_pass" json:"db_pass"`
-	ConfPath    string `form:"config_path" json:"config_path"`
 	StorageSize int    `form:"storage_size" json:"storage_size"`
-	OcUrl       string `gorm:"column:oc_url;type:varchar(100)"`
+	OcUrl       string `form:"oc_url" json:"oc_url"`
+	IsAdmin     int    `form:"is_admin" json:"is_admin"`
 }

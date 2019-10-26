@@ -11,7 +11,6 @@ import (
 	"github.com/seregant/golang_k8s_provisioning/database"
 	"github.com/seregant/golang_k8s_provisioning/models"
 
-	gin "github.com/gin-gonic/gin"
 	appsv1 "k8s.io/api/apps/v1"
 	apiv1 "k8s.io/api/core/v1"
 	v1 "k8s.io/api/core/v1"
@@ -20,35 +19,11 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	intstr "k8s.io/apimachinery/pkg/util/intstr"
 
-	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/scheme"
-	"k8s.io/client-go/tools/clientcmd"
 )
 
-type Cluster struct{}
-
-func (w *Cluster) GetNodesData(c *gin.Context) {
-	config, err := clientcmd.BuildConfigFromFlags("", "./cluster-conf")
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	clientset, err := kubernetes.NewForConfig(config)
-	if err != nil {
-		log.Fatal(err)
-	}
-	data, err := clientset.RESTClient().Get().AbsPath("apis/metrics.k8s.io/v1beta1/nodes").DoRaw()
-	var parsed models.NodesData
-	json.Unmarshal(data, &parsed)
-	c.JSON(200, gin.H{
-		"status":  "200",
-		"message": "success",
-		"data":    parsed,
-	})
-	CheckClusterAvail()
-}
-
 func Provisioning(dataUser models.Pengguna) bool {
+	var conf = config.SetConfig()
 	status := CheckClusterAvail()
 	if status {
 		if DeployDatabase(
@@ -65,7 +40,13 @@ func Provisioning(dataUser models.Pengguna) bool {
 				dataUser.Username,
 				dataUser.Username+".domain.com",
 			) {
-				return IngressApply()
+				var emailNotif []string
+				emailNotif = append(emailNotif, dataUser.Email)
+				message := "Halo, untuk mengakses Owncloud anda silahkan login ke url " + conf.Domain + "/login"
+
+				if IngressApply() {
+					return sendNotif(emailNotif, message)
+				}
 			}
 		}
 	}
@@ -446,7 +427,7 @@ func IngressApply() bool {
 				ServiceName: "owncloud-" + data.Username,
 				ServicePort: intstr.FromInt(8080),
 			},
-			Path: "/" + data.OcUrl + "/?(.*)",
+			Path: "/oc-client/" + data.OcUrl + "/?(.*)",
 		})
 	}
 

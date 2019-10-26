@@ -11,8 +11,9 @@ require (
 	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/spf13/viper v1.4.0
 	golang.org/x/crypto v0.0.0-20190923035154-9ee001bba392
-	gopkg.in/yaml.v2 v2.2.3
-	k8s.io/api v0.0.0-20190920115539-4f7a4f90b2c0
-	k8s.io/apimachinery v0.0.0-20190919161714-83fef8059749
-	k8s.io/client-go v0.0.0-20190920155738-bcb3724b2b9c
+	gopkg.in/yaml.v2 v2.2.4
+	k8s.io/api v0.0.0-20191025225708-5524a3672fbb
+	k8s.io/apimachinery v0.0.0-20191025225532-af6325b3a843
+	k8s.io/client-go v0.0.0-20191025225928-af0e48646694
+	k8s.io/metrics v0.0.0-20191025231619-a113c8ab860e
 )
