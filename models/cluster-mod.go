@@ -10,9 +10,9 @@ type NodesData struct {
 	Metadata   struct {
 		SelfLink string `json:"selfLink"`
 	} `json:"metadata"`
-	Items NodesItem `json:"items"`
+	Items []NodesItem `json:"items"`
 }
-type NodesItem []struct {
+type NodesItem struct {
 	Metadata struct {
 		Name              string    `json:"name"`
 		SelfLink          string    `json:"selfLink"`
@@ -23,7 +23,7 @@ type NodesItem []struct {
 	Capacity  struct {
 		CPU    string `json:"cpu"`
 		Memory string `json:"memory"`
-	}
+	} `json:"capacity"`
 	Usage struct {
 		CPU    string `json:"cpu"`
 		Memory string `json:"memory"`
