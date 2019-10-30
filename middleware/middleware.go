@@ -15,11 +15,11 @@ func CORSMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		c.Writer.Header().Set("Access-Control-Allow-Origin", "*")
 		c.Writer.Header().Set("Access-Control-Allow-Credentials", "true")
-		c.Writer.Header().Set("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept")
+		c.Writer.Header().Set("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept, Authorization")
 		c.Writer.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS, GET, PUT")
 
 		if c.Request.Method == "OPTIONS" {
-			c.AbortWithStatus(204)
+			c.AbortWithStatus(200)
 			return
 		}
 
@@ -32,8 +32,9 @@ func ValidateToken() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		bearer := c.Request.Header.Get("Authorization")
 		if bearer != "" {
-			fmt.Println(bearer)
+			// fmt.Println(bearer + "test")
 			strSplit := strings.Split(bearer, " ")
+			fmt.Println("token masuk ke validasi : ", strSplit[1])
 			if strSplit[0] == "Bearer" && strSplit[1] != "" {
 				secretKey := config.SecretKey
 				token, err := jwt.Parse(strSplit[1], func(token *jwt.Token) (interface{}, error) {

@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"fmt"
 	"net/http"
 	"regexp"
 	"time"
@@ -20,6 +21,8 @@ type AuthController struct{}
 func (w *AuthController) GenerateToken(c *gin.Context) {
 	username, _ := c.GetPostForm("user")
 	password, _ := c.GetPostForm("password")
+	fmt.Println(username)
+	fmt.Println(password)
 	emailPttrn := regexp.MustCompile("^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$")
 	var data models.Pengguna
 	var db = database.DbConnect()
@@ -37,7 +40,7 @@ func (w *AuthController) GenerateToken(c *gin.Context) {
 		secretKey := config.SecretKey
 		sign := jwt.New(jwt.GetSigningMethod("HS512"))
 		claims := sign.Claims.(jwt.MapClaims)
-		expiredAt := time.Now().Add(time.Millisecond * time.Duration(config.TokenExpTime*1000000000)).Unix()
+		expiredAt := time.Now().Add(time.Duration(config.TokenExpTime * 1000000000)).Unix()
 		claims["iat"] = time.Now().Unix() //iat and exp is standart claims
 		claims["exp"] = expiredAt
 		claims["name"] = data.Nama

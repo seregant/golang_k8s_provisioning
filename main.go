@@ -20,12 +20,16 @@ func main() {
 	router := gin.Default()
 
 	router.Use(middleware.CORSMiddleware())
-	router.POST("/login", authController.GenerateToken)
 	api := router.Group("/api")
 	{
-		pengguna := api.Group("pengguna")
+		login := api.Group("login")
 		{
-			pengguna.GET("/", middleware.ValidateToken(), penggunaController.GetAll)
+			login.POST("/", authController.GenerateToken)
+		}
+		pengguna := api.Group("pengguna")
+		pengguna.Use(middleware.CORSMiddleware())
+		{
+			pengguna.GET("/", penggunaController.GetAll)
 			pengguna.POST("/add", penggunaController.Add)
 			pengguna.GET("/u", middleware.ValidateToken(), penggunaController.GetDataPengguna)
 		}

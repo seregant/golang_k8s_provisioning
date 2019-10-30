@@ -33,7 +33,7 @@ func SetConfig() Config {
 	config.HttpPort = "1235"
 	config.SrvKey = "Aw4s_g4l4k"
 	config.NfsServerIp = "192.168.1.1"
-	config.TokenExpTime = 1800
+	config.TokenExpTime = 180
 	config.SecretKey = "KJKJIds6sh"
 	config.Domain = "test-domain.com"
 	return config

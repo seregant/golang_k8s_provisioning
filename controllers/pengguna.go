@@ -126,6 +126,7 @@ func (w *Pengguna) Add(c *gin.Context) {
 }
 
 func (w *Pengguna) GetDataPengguna(c *gin.Context) {
+	conf := config.SetConfig()
 	var dataUser models.Pengguna
 	var dataRes []models.PenggunaRes
 	var db = database.DbConnect()
@@ -156,7 +157,7 @@ func (w *Pengguna) GetDataPengguna(c *gin.Context) {
 			DBuser:      dataUser.DBuser,
 			DBpass:      dataUser.DBpass,
 			StorageSize: dataUser.StorageSize,
-			OcUrl:       dataUser.OcUrl,
+			OcUrl:       conf.Domain + "/oc-client/" + dataUser.OcUrl,
 		})
 		c.JSON(200, gin.H{
 			"status":  200,
