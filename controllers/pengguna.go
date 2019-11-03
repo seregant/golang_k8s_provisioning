@@ -145,6 +145,7 @@ func (w *Pengguna) GetDataPengguna(c *gin.Context) {
 	})
 
 	if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
+		fmt.Println(claims["admin"])
 		db.Where("pengguna_email = ?", claims["email"]).Find(&dataUser)
 		dataRes = append(dataRes, models.PenggunaRes{
 			IDPengguna:  dataUser.IDPengguna,
@@ -158,6 +159,7 @@ func (w *Pengguna) GetDataPengguna(c *gin.Context) {
 			DBpass:      dataUser.DBpass,
 			StorageSize: dataUser.StorageSize,
 			OcUrl:       conf.Domain + "/oc-client/" + dataUser.OcUrl,
+			IsAdmin:     dataUser.IsAdmin,
 		})
 		c.JSON(200, gin.H{
 			"status":  200,

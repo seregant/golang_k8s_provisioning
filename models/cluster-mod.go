@@ -2,6 +2,8 @@ package models
 
 import (
 	"time"
+
+	v1 "k8s.io/api/core/v1"
 )
 
 type NodesData struct {
@@ -28,6 +30,7 @@ type NodesItem struct {
 		CPU    string `json:"cpu"`
 		Memory string `json:"memory"`
 	} `json:"usage"`
+	Condition []v1.NodeCondition `json:"condition"`
 }
 
 type PodsData struct {

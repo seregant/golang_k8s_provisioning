@@ -45,6 +45,7 @@ func (w *AuthController) GenerateToken(c *gin.Context) {
 		claims["exp"] = expiredAt
 		claims["name"] = data.Nama
 		claims["email"] = data.Email
+		claims["admin"] = data.IsAdmin
 		jwtToken, err := sign.SignedString([]byte(secretKey))
 
 		if err != nil {

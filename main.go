@@ -36,7 +36,7 @@ func main() {
 
 		cluster := api.Group("/clusters")
 		{
-			cluster.GET("/nodes", clusterController.GetNodesData)
+			cluster.GET("/nodes", middleware.ValidateToken(), clusterController.GetNodesData)
 		}
 	}
 	router.Run(":" + conf.HttpPort)
