@@ -34,6 +34,7 @@ func ValidateToken() gin.HandlerFunc {
 		if bearer != "" {
 			// fmt.Println(bearer + "test")
 			strSplit := strings.Split(bearer, " ")
+
 			fmt.Println("token masuk ke validasi : ", strSplit[1])
 			if strSplit[0] == "Bearer" && strSplit[1] != "" {
 				secretKey := config.SecretKey
@@ -47,9 +48,9 @@ func ValidateToken() gin.HandlerFunc {
 				})
 				fmt.Println("error : ", err)
 				_, ok := token.Claims.(jwt.MapClaims)
-				fmt.Println("validation result : ")
-				fmt.Println(ok)
-				fmt.Println(token.Valid)
+				// fmt.Println("validation result : ")
+				// fmt.Println(ok)
+				// fmt.Println(token.Valid)
 				if ok && token.Valid && err == nil {
 					c.Next()
 				} else {

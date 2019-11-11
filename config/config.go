@@ -15,7 +15,7 @@ type Config struct {
 	DbName       string
 	HttpPort     string
 	SrvKey       string
-	NfsServerIp  string
+	ServerIp     string
 	TokenExpTime int64
 	SecretKey    string
 	Domain       string
@@ -32,7 +32,7 @@ func SetConfig() Config {
 	config.DbPass = ""
 	config.HttpPort = "1235"
 	config.SrvKey = "Aw4s_g4l4k"
-	config.NfsServerIp = "192.168.1.1"
+	config.ServerIp = "192.168.1.1"
 	config.TokenExpTime = 1800
 	config.SecretKey = "KJKJIds6sh"
 	config.Domain = "test-domain.com"

@@ -4,48 +4,54 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"os/exec"
 	"strconv"
 	"strings"
 
 	"github.com/seregant/golang_k8s_provisioning/config"
 	"github.com/seregant/golang_k8s_provisioning/database"
 	"github.com/seregant/golang_k8s_provisioning/models"
+	"k8s.io/apimachinery/pkg/api/resource"
 
 	appsv1 "k8s.io/api/apps/v1"
 	apiv1 "k8s.io/api/core/v1"
-	v1 "k8s.io/api/core/v1"
 	v1b1ex "k8s.io/api/extensions/v1beta1"
-	v1b1rbac "k8s.io/api/rbac/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	intstr "k8s.io/apimachinery/pkg/util/intstr"
-
-	"k8s.io/client-go/kubernetes/scheme"
 )
 
 func Provisioning(dataUser models.Pengguna) bool {
+	pvName := "volume-" + dataUser.Username
+	var db = database.DbConnect()
+	defer db.Close()
 	var conf = config.SetConfig()
 	status := CheckClusterAvail()
+	storageSize := strconv.Itoa(dataUser.StorageSize)
 	if status {
+		db.Create(&dataUser)
 		if DeployDatabase(
 			dataUser.DBpass,
 			dataUser.DBname,
 			dataUser.DBuser,
 			dataUser.Username,
 		) {
-			if DeployOwnCloud(
-				dataUser.DBpass,
-				dataUser.DBname,
-				dataUser.DBuser,
-				dataUser.Password,
-				dataUser.Username,
-				dataUser.Username+".domain.com",
-			) {
-				var emailNotif []string
-				emailNotif = append(emailNotif, dataUser.Email)
-				message := "Halo, untuk mengakses Owncloud anda silahkan login ke url " + conf.Domain + "/login"
+			if CreateVol(pvName, strconv.Itoa(dataUser.StorageSize)) {
+				if DeployOwnCloud(
+					dataUser.DBpass,
+					dataUser.DBname,
+					dataUser.DBuser,
+					dataUser.Password,
+					dataUser.Username,
+					config.SetConfig().Domain+"/oc-client/"+dataUser.Username,
+					storageSize,
+				) {
+					var emailNotif []string
+					emailNotif = append(emailNotif, dataUser.Email)
+					message := "Halo, untuk mengakses Owncloud anda silahkan login ke url " + conf.Domain + "/login"
 
-				if IngressApply() {
-					return sendNotif(emailNotif, message)
+					if IngressApply() {
+						return sendNotif(emailNotif, message)
+					}
 				}
 			}
 		}
@@ -105,7 +111,9 @@ func CheckClusterAvail() bool {
 }
 
 //jangan lupa buat log untuk setiap deployment yang telah dilakukan di db
-func DeployOwnCloud(dbpass, dbname, dbuser, ocpass, ocuser, ocdomain string) bool {
+func DeployOwnCloud(dbpass, dbname, dbuser, ocpass, ocuser, ocdomain, ocstorage string) bool {
+	fmt.Println("resquest storage : " + ocstorage)
+	pvName := "volume-" + ocuser
 	clientset := config.SetK8sClient()
 	deploymentClient := clientset.AppsV1().Deployments(apiv1.NamespaceDefault)
 	deploy := &appsv1.Deployment{
@@ -182,6 +190,22 @@ func DeployOwnCloud(dbpass, dbname, dbuser, ocpass, ocuser, ocdomain string) boo
 								// 	Name:  "HTTPS_PORT",
 								// 	Value: "443",
 								// },
+							},
+							VolumeMounts: []apiv1.VolumeMount{
+								{
+									Name:      pvName,
+									MountPath: "/var/www/owncloud/data",
+								},
+							},
+						},
+					},
+					Volumes: []apiv1.Volume{
+						{
+							Name: pvName,
+							VolumeSource: apiv1.VolumeSource{
+								PersistentVolumeClaim: &apiv1.PersistentVolumeClaimVolumeSource{
+									ClaimName: "pvc-" + pvName,
+								},
 							},
 						},
 					},
@@ -300,112 +324,73 @@ func createService(a *appsv1.Deployment, port int32) bool {
 	return true
 }
 
-func CreateVol(pvName string, pvSize string) {
-	var pvConf = `
-{
-	"apiVersion": "v1",
-	"kind": "PersistentVolume",
-	"metadata": {
-		"name": "` + pvName + `"
-	},
-	"spec": {
-		"capacity": {
-			"storage": "` + pvSize + `Gi"
+func CreateVol(pvName string, pvSize string) bool {
+	cmd := exec.Command("mkdir", "/opt/oc-data/users/"+pvName)
+	if err := cmd.Run(); err != nil {
+		log.Fatal(err)
+	}
+	clientset := config.SetK8sClient()
+	k8sApi := clientset.CoreV1()
+	var volAccModes []apiv1.PersistentVolumeAccessMode
+	volAccModes = append(volAccModes, "ReadWriteMany")
+	volSpec := &apiv1.PersistentVolume{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "PersistentVolume",
+			APIVersion: "v1",
 		},
-		"accessModes": [{
-			"ReadwriteMany"
-		}]
-		"persistentVolumeReclaimPolicy": "Retain",
-		"nfs": {
-			"server": "` + config.SetConfig().NfsServerIp + `",
-			"path": "/opt/oc-data/users/` + pvName + `"
+		ObjectMeta: metav1.ObjectMeta{
+			Name: pvName,
 		},
-		"claimRef": {
-			"namespace": "development",
-			"name": "` + pvName + `",
+		Spec: apiv1.PersistentVolumeSpec{
+			Capacity: apiv1.ResourceList{
+				"storage": resource.MustParse(pvSize + "Gi"),
+			},
+			AccessModes:                   volAccModes,
+			PersistentVolumeReclaimPolicy: apiv1.PersistentVolumeReclaimRetain,
+			PersistentVolumeSource: apiv1.PersistentVolumeSource{
+				NFS: &apiv1.NFSVolumeSource{
+					Server: config.SetConfig().ServerIp,
+					Path:   "/opt/oc-data/users/" + pvName,
+				},
+			},
+			ClaimRef: &apiv1.ObjectReference{
+				Name:      "pvc-" + pvName,
+				Namespace: "default",
+			},
+		},
+	}
+	pvcSpec := &apiv1.PersistentVolumeClaim{
+		TypeMeta: metav1.TypeMeta{
+			Kind:       "PersistentVolumeClaim",
+			APIVersion: "v1",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "pvc-" + pvName,
+		},
+		Spec: apiv1.PersistentVolumeClaimSpec{
+			AccessModes: volAccModes,
+			Resources: apiv1.ResourceRequirements{
+				Requests: apiv1.ResourceList{
+					"storage": resource.MustParse(pvSize + "Gi"),
+				},
+			},
+		},
+	}
+	fmt.Println("Creating volume and it's pvc....")
+	_, err := k8sApi.PersistentVolumes().Create(volSpec)
+	if err != nil {
+		log.Fatal(err)
+		return false
+	} else {
+		fmt.Println("add volume " + pvName + " succeed")
+		_, err2 := k8sApi.PersistentVolumeClaims(apiv1.NamespaceDefault).Create(pvcSpec)
+		if err2 != nil {
+			log.Fatal(err2)
+			return false
+		} else {
+			fmt.Println("add volume claim pvc-" + pvName + " succeed")
+			return true
 		}
-	}
-}
-`
-	var pvcConf = `
-{
-	"apiVersion": "v1",
-	"kind": "PersistentVolumeClaim",
-	"metadata": {
-		"name": "` + pvName + `-pvc"
-	},
-	"spec": {
-		"accessModes": [{
-			"ReadWriteMany"
-		}]
-		"resources": {
-			"resquests": {
-				"storage": "` + pvSize + `Gi",
-			}
-		}
-	}
-}
-`
-	decode := scheme.Codecs.UniversalDeserializer().Decode
-	obj, _, err := decode([]byte(pvConf), nil, nil)
-	if err != nil {
-		fmt.Printf("%#v", err)
-	}
-
-	deployment := obj.(*apiv1.PersistentVolume)
-
-	fmt.Printf("%#v\n", deployment)
-	obj2, _, err := decode([]byte(pvcConf), nil, nil)
-	if err != nil {
-		fmt.Printf("%#v", err)
-	}
-
-	deployment2 := obj2.(*apiv1.PersistentVolume)
-
-	fmt.Printf("%#v\n", deployment2)
-}
-
-func VolumeTest() {
-	var json = `
-apiVersion: v1
-kind: PersistentVolume
-metadata:
-  name: pv-name
-spec:
-  capacity:
-    storage: storage-size # This size is used to match a volume to a tenents claim
-    accessModes:
-      - ReadWriteMany # Access modes are defined below
-    persistentVolumeReclaimPolicy: Retain # Reclaim policies are defined below
-    nfs:
-      server: 192.168.1.1
-      path: nfs-server-path/user-folder
-    claimRef:
-      namespace: development
-      name: pv-name
-`
-	decode := scheme.Codecs.UniversalDeserializer().Decode
-
-	obj, _, err := decode([]byte(json), nil, nil)
-	if err != nil {
-		fmt.Printf("error cuk", err)
-	}
-
-	// deployment := obj.(*v1beta1.Deployment)
-
-	// fmt.Printf("%#v\n", obj.(type))
-	switch o := obj.(type) {
-	case *v1.PersistentVolume:
-		fmt.Println("aproved")
-	case *v1b1rbac.Role:
-		// o is the actual role Object with all fields etc
-	case *v1b1rbac.RoleBinding:
-	case *v1b1rbac.ClusterRole:
-	case *v1b1rbac.ClusterRoleBinding:
-	case *v1.ServiceAccount:
-	default:
-		//o is unknown for us
-		fmt.Println(o)
 	}
 }
 

@@ -68,7 +68,7 @@ func (w *Pengguna) Add(c *gin.Context) {
 	formData.Password, _ = c.GetPostForm("password")
 	storageSize, _ := c.GetPostForm("storage")
 	formData.StorageSize, _ = strconv.Atoi(storageSize)
-
+	fmt.Println("req dari frontend " + storageSize)
 	emailPttrn := regexp.MustCompile("^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$")
 	db.Where("pengguna_username =  ?", formData.Username).Find(&penggunaQuery).Count(&countUsername)
 	db.Where("pengguna_email = ?", formData.Email).Find(&penggunaQuery).Count(&countEmail)
@@ -82,7 +82,6 @@ func (w *Pengguna) Add(c *gin.Context) {
 				formData.DBpass = string(dbPass)
 				formData.OcUrl = formData.Username
 
-				db.Create(&formData)
 				//jangan lupa notifikasi setelah provisioning berjalan
 				if Provisioning(formData) {
 					c.JSON(200, gin.H{
