@@ -21,22 +21,22 @@ import (
 )
 
 func Provisioning(dataUser models.Pengguna) bool {
-	pvName := "volume-" + dataUser.Username
-	dbPvName := "mysql-pv-" + dataUser.Username
+	// pvName := "volume-" + dataUser.Username
+	// dbPvName := "mysql-pv-" + dataUser.Username
 	var db = database.DbConnect()
 	defer db.Close()
 	var conf = config.SetConfig()
 	status := CheckClusterAvail()
 	storageSize := strconv.Itoa(dataUser.StorageSize)
 	if status {
-		if CreateVol(dbPvName, strconv.Itoa(dataUser.StorageSize)) {
+		if /*CreateVol(dbPvName, strconv.Itoa(dataUser.StorageSize))*/ true {
 			if DeployDatabase(
 				dataUser.DBpass,
 				dataUser.DBname,
 				dataUser.DBuser,
 				dataUser.Username,
 			) {
-				if CreateVol(pvName, strconv.Itoa(dataUser.StorageSize)) {
+				if /*CreateVol(pvName, strconv.Itoa(dataUser.StorageSize))*/ true {
 					if DeployOwnCloud(
 						dataUser.DBpass,
 						dataUser.DBname,
