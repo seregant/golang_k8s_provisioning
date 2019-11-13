@@ -43,7 +43,7 @@ func Provisioning(dataUser models.Pengguna) bool {
 						dataUser.DBuser,
 						dataUser.Password,
 						dataUser.Username,
-						config.SetConfig().Domain+"/oc-client/"+dataUser.Username,
+						config.SetConfig().Domain,
 						storageSize,
 					) {
 						db.Create(&dataUser)
@@ -152,6 +152,10 @@ func DeployOwnCloud(dbpass, dbname, dbuser, ocpass, ocuser, ocdomain, ocstorage 
 								{
 									Name:  "OWNCLOUD_DOMAIN",
 									Value: ocdomain, //-->from variable
+								},
+								{
+									Name:  "OWNCLOUD_SUB_URL",
+									Value: "/oc-client/" + ocuser,
 								},
 								{
 									Name:  "OWNCLOUD_DB_TYPE",
