@@ -8,8 +8,8 @@ import (
 )
 
 type Config struct {
-	Host         string
-	Port         string
+	DbHost       string
+	DbPort       string
 	DbUser       string
 	DbPass       string
 	DbName       string
@@ -25,8 +25,8 @@ func SetConfig() Config {
 	var config Config
 
 	//set configuration here
-	config.Host = "cockroachdb"
-	config.Port = "3306"
+	config.DbHost = "127.0.0.1"
+	config.DbPort = "3306"
 	config.DbUser = "root"
 	config.DbName = "provisioning_owncloud"
 	config.DbPass = ""

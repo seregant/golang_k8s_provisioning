@@ -13,7 +13,8 @@ import (
 var conf = config.SetConfig()
 
 func DbConnect() *gorm.DB {
-	var addr = conf.DbUser + ":" + conf.DbPass + "@/" + conf.DbName + "?charset=utf8&parseTime=True&loc=Local"
+	var addr = conf.DbUser + ":" + conf.DbPass + "@tcp(" + conf.DbHost + ":" + conf.DbPort + ")/" + conf.DbName + "?charset=utf8&parseTime=True&loc=Local"
+	fmt.Println(addr)
 	db, err := gorm.Open("mysql", addr)
 	if err != nil {
 		log.Fatal(err)
