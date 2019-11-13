@@ -116,7 +116,7 @@ func CheckClusterAvail() bool {
 //jangan lupa buat log untuk setiap deployment yang telah dilakukan di db
 func DeployOwnCloud(dbpass, dbname, dbuser, ocpass, ocuser, ocdomain, ocstorage string) bool {
 	fmt.Println("resquest storage : " + ocstorage)
-	pvName := "volume-" + ocuser
+	// pvName := "volume-" + ocuser
 	clientset := config.SetK8sClient()
 	deploymentClient := clientset.AppsV1().Deployments(apiv1.NamespaceDefault)
 	deploy := &appsv1.Deployment{
@@ -227,7 +227,7 @@ func DeployOwnCloud(dbpass, dbname, dbuser, ocpass, ocuser, ocdomain, ocstorage 
 }
 
 func DeployDatabase(dbpass, dbname, dbuser, ocuser string) bool {
-	pvName := "mysql-pv-" + ocuser
+	// pvName := "mysql-pv-" + ocuser
 	clientset := config.SetK8sClient()
 	deploymentClient := clientset.AppsV1().Deployments(apiv1.NamespaceDefault)
 	deploy := &appsv1.Deployment{
