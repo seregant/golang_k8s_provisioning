@@ -22,35 +22,38 @@ import (
 
 func Provisioning(dataUser models.Pengguna) bool {
 	pvName := "volume-" + dataUser.Username
+	dbPvName := "mysql-pv-" + dataUser.Username
 	var db = database.DbConnect()
 	defer db.Close()
 	var conf = config.SetConfig()
 	status := CheckClusterAvail()
 	storageSize := strconv.Itoa(dataUser.StorageSize)
 	if status {
-		db.Create(&dataUser)
-		if DeployDatabase(
-			dataUser.DBpass,
-			dataUser.DBname,
-			dataUser.DBuser,
-			dataUser.Username,
-		) {
-			if CreateVol(pvName, strconv.Itoa(dataUser.StorageSize)) {
-				if DeployOwnCloud(
-					dataUser.DBpass,
-					dataUser.DBname,
-					dataUser.DBuser,
-					dataUser.Password,
-					dataUser.Username,
-					config.SetConfig().Domain+"/oc-client/"+dataUser.Username,
-					storageSize,
-				) {
-					var emailNotif []string
-					emailNotif = append(emailNotif, dataUser.Email)
-					message := "Halo, untuk mengakses Owncloud anda silahkan login ke url " + conf.Domain + "/login"
+		if CreateVol(dbPvName, strconv.Itoa(dataUser.StorageSize)) {
+			if DeployDatabase(
+				dataUser.DBpass,
+				dataUser.DBname,
+				dataUser.DBuser,
+				dataUser.Username,
+			) {
+				if CreateVol(pvName, strconv.Itoa(dataUser.StorageSize)) {
+					if DeployOwnCloud(
+						dataUser.DBpass,
+						dataUser.DBname,
+						dataUser.DBuser,
+						dataUser.Password,
+						dataUser.Username,
+						config.SetConfig().Domain+"/oc-client/"+dataUser.Username,
+						storageSize,
+					) {
+						db.Create(&dataUser)
+						var emailNotif []string
+						emailNotif = append(emailNotif, dataUser.Email)
+						message := "Halo, untuk mengakses Owncloud anda silahkan login ke url " + conf.Domain + "/login"
 
-					if IngressApply() {
-						return sendNotif(emailNotif, message)
+						if IngressApply() {
+							return sendNotif(emailNotif, message)
+						}
 					}
 				}
 			}
@@ -224,6 +227,7 @@ func DeployOwnCloud(dbpass, dbname, dbuser, ocpass, ocuser, ocdomain, ocstorage 
 }
 
 func DeployDatabase(dbpass, dbname, dbuser, ocuser string) bool {
+	pvName := "mysql-pv-" + ocuser
 	clientset := config.SetK8sClient()
 	deploymentClient := clientset.AppsV1().Deployments(apiv1.NamespaceDefault)
 	deploy := &appsv1.Deployment{
@@ -271,6 +275,22 @@ func DeployDatabase(dbpass, dbname, dbuser, ocuser string) bool {
 								{
 									Name:  "MYSQL_PASSWORD",
 									Value: dbpass, //-->from variable
+								},
+							},
+							VolumeMounts: []apiv1.VolumeMount{
+								{
+									Name:      pvName,
+									MountPath: "/var/lib/mysql",
+								},
+							},
+						},
+					},
+					Volumes: []apiv1.Volume{
+						{
+							Name: pvName,
+							VolumeSource: apiv1.VolumeSource{
+								PersistentVolumeClaim: &apiv1.PersistentVolumeClaimVolumeSource{
+									ClaimName: "pvc-" + pvName,
 								},
 							},
 						},
@@ -327,7 +347,9 @@ func createService(a *appsv1.Deployment, port int32) bool {
 func CreateVol(pvName string, pvSize string) bool {
 	cmd := exec.Command("mkdir", "/opt/oc-data/users/"+pvName)
 	if err := cmd.Run(); err != nil {
-		log.Fatal(err)
+		fmt.Print("Creating nfs folder error : ")
+		fmt.Println(err)
+		return false
 	}
 	clientset := config.SetK8sClient()
 	k8sApi := clientset.CoreV1()
@@ -379,13 +401,15 @@ func CreateVol(pvName string, pvSize string) bool {
 	fmt.Println("Creating volume and it's pvc....")
 	_, err := k8sApi.PersistentVolumes().Create(volSpec)
 	if err != nil {
-		log.Fatal(err)
+		fmt.Print("Creating volume error : ")
+		fmt.Println(err)
 		return false
 	} else {
 		fmt.Println("add volume " + pvName + " succeed")
 		_, err2 := k8sApi.PersistentVolumeClaims(apiv1.NamespaceDefault).Create(pvcSpec)
 		if err2 != nil {
-			log.Fatal(err2)
+			fmt.Print("Creating volume claim error : ")
+			fmt.Println(err2)
 			return false
 		} else {
 			fmt.Println("add volume claim pvc-" + pvName + " succeed")
@@ -395,6 +419,7 @@ func CreateVol(pvName string, pvSize string) bool {
 }
 
 func IngressApply() bool {
+	fmt.Println("Updating ingress configuration..")
 	var dataUser []models.Pengguna
 	var db = database.DbConnect()
 	defer db.Close()
@@ -445,7 +470,16 @@ func IngressApply() bool {
 
 	_, err := ingressClient.Create(ingressSpec)
 	if err != nil {
-		return false
+		fmt.Print("Create ingress : ")
+		fmt.Println(err)
+		_, errUpdate := ingressClient.Update(ingressSpec)
+		if errUpdate != nil {
+			fmt.Print("Update ingress : ")
+			fmt.Println(err)
+			return false
+		} else {
+			return true
+		}
 	} else {
 		return true
 	}

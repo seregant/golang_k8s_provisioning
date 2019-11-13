@@ -88,14 +88,14 @@ func (w *Pengguna) Add(c *gin.Context) {
 						"status":     "200",
 						"message":    "success",
 						"validation": "true",
-						"details":    "registration succeed",
+						"details":    "Registrasi akun berhasil!",
 					})
 				} else {
 					c.JSON(200, gin.H{
 						"status":     "200",
 						"message":    "success",
 						"validation": "false",
-						"details":    "Priovisioning failed",
+						"details":    "Priovisioning gagal",
 					})
 				}
 			} else {

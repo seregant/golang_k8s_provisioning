@@ -35,7 +35,7 @@ func SetConfig() Config {
 	config.ServerIp = "192.168.1.1"
 	config.TokenExpTime = 1800
 	config.SecretKey = "KJKJIds6sh"
-	config.Domain = "test-domain.com"
+	config.Domain = "stidust-web.site"
 	return config
 }
 

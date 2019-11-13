@@ -23,7 +23,7 @@ func sendNotif(mailAddr []string, message string) bool {
 
 	db.Where("pengguna_email = ?", mailAddr[0]).First(&dataUser)
 
-	subject := "Owncloud Admin"
+	subject := "Akun Owncloud Anda"
 	err := sendMail(mailAddr, subject, message)
 	if err != nil {
 		log.Fatal(err.Error())
@@ -35,6 +35,7 @@ func sendNotif(mailAddr []string, message string) bool {
 }
 
 func sendMail(to []string, subject, message string) error {
+	fmt.Println("Sending email notification..")
 	body := "From: " + CONFIG_EMAIL + "\n" +
 		"To: " + strings.Join(to, ",") + "\n" +
 		"Subject: " + subject + "\n\n" +
@@ -45,6 +46,8 @@ func sendMail(to []string, subject, message string) error {
 
 	err := smtp.SendMail(smtpAddr, auth, CONFIG_EMAIL, to, []byte(body))
 	if err != nil {
+		fmt.Print("Sending email failed : ")
+		fmt.Println(err)
 		return err
 	}
 
