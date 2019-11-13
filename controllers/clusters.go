@@ -194,24 +194,24 @@ func DeployOwnCloud(dbpass, dbname, dbuser, ocpass, ocuser, ocdomain, ocstorage 
 								// 	Value: "443",
 								// },
 							},
-							VolumeMounts: []apiv1.VolumeMount{
-								{
-									Name:      pvName,
-									MountPath: "/var/www/owncloud/data",
-								},
-							},
+							// VolumeMounts: []apiv1.VolumeMount{
+							// 	{
+							// 		Name:      pvName,
+							// 		MountPath: "/var/www/owncloud/data",
+							// 	},
+							// },
 						},
 					},
-					Volumes: []apiv1.Volume{
-						{
-							Name: pvName,
-							VolumeSource: apiv1.VolumeSource{
-								PersistentVolumeClaim: &apiv1.PersistentVolumeClaimVolumeSource{
-									ClaimName: "pvc-" + pvName,
-								},
-							},
-						},
-					},
+					// Volumes: []apiv1.Volume{
+					// 	{
+					// 		Name: pvName,
+					// 		VolumeSource: apiv1.VolumeSource{
+					// 			PersistentVolumeClaim: &apiv1.PersistentVolumeClaimVolumeSource{
+					// 				ClaimName: "pvc-" + pvName,
+					// 			},
+					// 		},
+					// 	},
+					// },
 				},
 			},
 		},
@@ -277,24 +277,24 @@ func DeployDatabase(dbpass, dbname, dbuser, ocuser string) bool {
 									Value: dbpass, //-->from variable
 								},
 							},
-							VolumeMounts: []apiv1.VolumeMount{
-								{
-									Name:      pvName,
-									MountPath: "/var/lib/mysql",
-								},
-							},
+							// VolumeMounts: []apiv1.VolumeMount{
+							// 	{
+							// 		Name:      pvName,
+							// 		MountPath: "/var/lib/mysql",
+							// 	},
+							// },
 						},
 					},
-					Volumes: []apiv1.Volume{
-						{
-							Name: pvName,
-							VolumeSource: apiv1.VolumeSource{
-								PersistentVolumeClaim: &apiv1.PersistentVolumeClaimVolumeSource{
-									ClaimName: "pvc-" + pvName,
-								},
-							},
-						},
-					},
+					// Volumes: []apiv1.Volume{
+					// 	{
+					// 		Name: pvName,
+					// 		VolumeSource: apiv1.VolumeSource{
+					// 			PersistentVolumeClaim: &apiv1.PersistentVolumeClaimVolumeSource{
+					// 				ClaimName: "pvc-" + pvName,
+					// 			},
+					// 		},
+					// 	},
+					// },
 				},
 			},
 		},
