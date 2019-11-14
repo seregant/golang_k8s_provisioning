@@ -329,7 +329,7 @@ func createService(a *appsv1.Deployment, port int32) bool {
 			Ports: []apiv1.ServicePort{
 				apiv1.ServicePort{
 					Protocol: apiv1.ProtocolTCP,
-					Port:     port,
+					Port:     80,
 					TargetPort: intstr.IntOrString{
 						Type:   intstr.Int,
 						IntVal: port,
@@ -439,7 +439,7 @@ func IngressApply() bool {
 		routeList = append(routeList, v1b1ex.HTTPIngressPath{
 			Backend: v1b1ex.IngressBackend{
 				ServiceName: "owncloud-" + data.Username,
-				ServicePort: intstr.FromInt(8080),
+				ServicePort: intstr.FromInt(80),
 			},
 			Path: "/oc-client/" + data.OcUrl + "/?(.*)",
 		})
