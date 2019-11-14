@@ -140,12 +140,12 @@ func DeployOwnCloud(dbpass, dbname, dbuser, ocpass, ocuser, ocdomain, ocstorage 
 					Containers: []apiv1.Container{
 						{
 							Name:  "oc-usr" + ocuser, //-->from variable by user ID
-							Image: "owncloud/server:10.2",
+							Image: "seregant/owncloud-port-80:10.2",
 							Ports: []apiv1.ContainerPort{
 								{
 									Name:          "owncloud",
 									Protocol:      apiv1.ProtocolTCP,
-									ContainerPort: 8080,
+									ContainerPort: 80,
 								},
 							},
 							Env: []apiv1.EnvVar{
@@ -227,7 +227,7 @@ func DeployOwnCloud(dbpass, dbname, dbuser, ocpass, ocuser, ocdomain, ocstorage 
 		log.Fatal(err)
 	}
 	fmt.Printf("Created deployment %q.\n", deploymentRes.GetObjectMeta().GetName())
-	return createService(deploy, 80, 8080)
+	return createService(deploy, 80, 80)
 }
 
 func DeployDatabase(dbpass, dbname, dbuser, ocuser string) bool {
