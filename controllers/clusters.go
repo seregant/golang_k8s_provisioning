@@ -149,14 +149,14 @@ func DeployOwnCloud(dbpass, dbname, dbuser, ocpass, ocuser, ocdomain, ocstorage 
 								},
 							},
 							Env: []apiv1.EnvVar{
-								{
-									Name:  "OWNCLOUD_DOMAIN",
-									Value: ocdomain, //-->from variable
-								},
-								{
-									Name:  "OWNCLOUD_SUB_URL",
-									Value: "/oc-client/" + ocuser,
-								},
+								// {
+								// 	Name:  "OWNCLOUD_DOMAIN",
+								// 	Value: ocdomain, //-->from variable
+								// },
+								// {
+								// 	Name:  "OWNCLOUD_SUB_URL",
+								// 	Value: "/oc-client/" + ocuser,
+								// },
 								{
 									Name:  "OWNCLOUD_DB_TYPE",
 									Value: "mysql",
