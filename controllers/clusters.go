@@ -227,7 +227,7 @@ func DeployOwnCloud(dbpass, dbname, dbuser, ocpass, ocuser, ocdomain, ocstorage 
 		log.Fatal(err)
 	}
 	fmt.Printf("Created deployment %q.\n", deploymentRes.GetObjectMeta().GetName())
-	return createService(deploy, 8080)
+	return createService(deploy, 80, 8080)
 }
 
 func DeployDatabase(dbpass, dbname, dbuser, ocuser string) bool {
@@ -310,10 +310,10 @@ func DeployDatabase(dbpass, dbname, dbuser, ocuser string) bool {
 		log.Fatal(err)
 	}
 	fmt.Printf("Created deployment %q.\n", deploymentRes.GetObjectMeta().GetName())
-	return createService(deploy, 3306)
+	return createService(deploy, 3306, 3306)
 }
 
-func createService(a *appsv1.Deployment, port int32) bool {
+func createService(a *appsv1.Deployment, port int32, targetPort int32) bool {
 	clientset := config.SetK8sClient()
 	serviceSpec := &apiv1.Service{
 		TypeMeta: metav1.TypeMeta{
@@ -329,10 +329,10 @@ func createService(a *appsv1.Deployment, port int32) bool {
 			Ports: []apiv1.ServicePort{
 				apiv1.ServicePort{
 					Protocol: apiv1.ProtocolTCP,
-					Port:     80,
+					Port:     port,
 					TargetPort: intstr.IntOrString{
 						Type:   intstr.Int,
-						IntVal: port,
+						IntVal: targetPort,
 					},
 				},
 			},
