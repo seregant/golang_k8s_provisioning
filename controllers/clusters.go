@@ -43,6 +43,7 @@ func Provisioning(dataUser models.Pengguna) bool {
 						dataUser.DBuser,
 						dataUser.Password,
 						dataUser.Username,
+						dataUser.Email,
 						config.SetConfig().Domain,
 						storageSize,
 					) {
@@ -114,7 +115,7 @@ func CheckClusterAvail() bool {
 }
 
 //jangan lupa buat log untuk setiap deployment yang telah dilakukan di db
-func DeployOwnCloud(dbpass, dbname, dbuser, ocpass, ocuser, ocdomain, ocstorage string) bool {
+func DeployOwnCloud(dbpass, dbname, dbuser, ocpass, ocuser, ocemail, ocdomain, ocstorage string) bool {
 	fmt.Println("resquest storage : " + ocstorage)
 	// pvName := "volume-" + ocuser
 	clientset := config.SetK8sClient()
@@ -140,7 +141,7 @@ func DeployOwnCloud(dbpass, dbname, dbuser, ocpass, ocuser, ocdomain, ocstorage 
 					Containers: []apiv1.Container{
 						{
 							Name:  "oc-usr" + ocuser, //-->from variable by user ID
-							Image: "seregant/owncloud-port-80:10.2",
+							Image: "seregant/owncloud-port-80:10.3-latest",
 							Ports: []apiv1.ContainerPort{
 								{
 									Name:          "owncloud",
@@ -149,8 +150,12 @@ func DeployOwnCloud(dbpass, dbname, dbuser, ocpass, ocuser, ocdomain, ocstorage 
 								},
 							},
 							Env: []apiv1.EnvVar{
+								{
+									Name:  "OWNCLOUD_DOMAIN",
+									Value: ocdomain, //-->from variable
+								},
 								// {
-								// 	Name:  "OWNCLOUD_DOMAIN",
+								// 	Name:  "OWNCLOUD_HOST",
 								// 	Value: ocdomain, //-->from variable
 								// },
 								// {
@@ -185,19 +190,40 @@ func DeployOwnCloud(dbpass, dbname, dbuser, ocpass, ocuser, ocdomain, ocstorage 
 									Name:  "OWNCLOUD_ADMIN_PASSWORD",
 									Value: ocpass, //-->from variable
 								},
+								// {
+								// 	Name:  "OWNCLOUD_USERNAME",
+								// 	Value: ocuser, //-->from variable
+								// },
+								// {
+								// 	Name:  "OWNCLOUD_PASSWORD",
+								// 	Value: ocpass, //-->from variable
+								// },
 								{
 									Name:  "OWNCLOUD_REDIS_ENABLED",
 									Value: "false", //-->from variable
 								},
-								// {
-								// 	Name:  "HTTP_PORT",
-								// 	Value: "80",
-								// },
+								{
+									Name:  "OWNCLOUD_ROOTPAH",
+									Value: "'overwritewebroot'=>'/oc-client/" + ocuser + "'",
+								},
+								{
+									Name:  "HTTP_PORT",
+									Value: "80",
+								},
 								// {
 								// 	Name:  "HTTPS_PORT",
 								// 	Value: "443",
 								// },
 							},
+							// Command: []string{
+							// 	"sed",
+							// },
+							// Args: []string{
+							// 	"-i.bak",
+							// 	"s#OC-ROOT-PATH#/oc-client/" + ocuser + "#",
+							// 	"/opt/bitnami/owncloud/config/config.php",
+							// },
+
 							// VolumeMounts: []apiv1.VolumeMount{
 							// 	{
 							// 		Name:      pvName,
@@ -279,6 +305,85 @@ func DeployDatabase(dbpass, dbname, dbuser, ocuser string) bool {
 								{
 									Name:  "MYSQL_PASSWORD",
 									Value: dbpass, //-->from variable
+								},
+							},
+							// VolumeMounts: []apiv1.VolumeMount{
+							// 	{
+							// 		Name:      pvName,
+							// 		MountPath: "/var/lib/mysql",
+							// 	},
+							// },
+						},
+					},
+					// Volumes: []apiv1.Volume{
+					// 	{
+					// 		Name: pvName,
+					// 		VolumeSource: apiv1.VolumeSource{
+					// 			PersistentVolumeClaim: &apiv1.PersistentVolumeClaimVolumeSource{
+					// 				ClaimName: "pvc-" + pvName,
+					// 			},
+					// 		},
+					// 	},
+					// },
+				},
+			},
+		},
+	}
+	fmt.Println("Creating deployment...")
+	deploymentRes, err := deploymentClient.Create(deploy)
+	if err != nil {
+		return false
+		log.Fatal(err)
+	}
+	fmt.Printf("Created deployment %q.\n", deploymentRes.GetObjectMeta().GetName())
+	return createService(deploy, 3306, 3306)
+}
+
+func DeployDatabaseMdb(dbpass, dbname, dbuser, ocuser string) bool {
+	// pvName := "mysql-pv-" + ocuser
+	clientset := config.SetK8sClient()
+	deploymentClient := clientset.AppsV1().Deployments(apiv1.NamespaceDefault)
+	deploy := &appsv1.Deployment{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "mariadb-" + ocuser,
+		},
+		Spec: appsv1.DeploymentSpec{
+			Replicas: int32Ptr(1),
+			Selector: &metav1.LabelSelector{
+				MatchLabels: map[string]string{
+					"app": "mariadb-app-" + ocuser, //-->from user data
+				},
+			},
+			Template: apiv1.PodTemplateSpec{
+				ObjectMeta: metav1.ObjectMeta{
+					Labels: map[string]string{
+						"app": "mariadb-app-" + ocuser,
+					},
+				},
+				Spec: apiv1.PodSpec{
+					Containers: []apiv1.Container{
+						{
+							Name:  "mariadb-usr" + ocuser, //-->from variable by user ID
+							Image: "bitnami/mariadb:10.1",
+							Ports: []apiv1.ContainerPort{
+								{
+									Name:          "mariadb-data",
+									Protocol:      apiv1.ProtocolTCP,
+									ContainerPort: 3306,
+								},
+							},
+							Env: []apiv1.EnvVar{
+								{
+									Name:  "MARIADB_ROOT_PASSWORD",
+									Value: dbpass, //-->from variable
+								},
+								{
+									Name:  "MARIADB_DATABASE",
+									Value: dbname, //-->from variable
+								},
+								{
+									Name:  "MARIADB_ROOT_USER",
+									Value: dbuser, //-->from variable
 								},
 							},
 							// VolumeMounts: []apiv1.VolumeMount{
