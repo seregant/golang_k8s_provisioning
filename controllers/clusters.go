@@ -50,7 +50,7 @@ func Provisioning(dataUser models.Pengguna) bool {
 						db.Create(&dataUser)
 						var emailNotif []string
 						emailNotif = append(emailNotif, dataUser.Email)
-						message := "Halo, untuk mengakses Owncloud anda silahkan login ke url " + conf.Domain + "/login"
+						message := "Halo, untuk mengakses Owncloud anda silahkan login ke url " + conf.Domain + "/" + dataUser.Username + "/login"
 
 						if IngressApply() {
 							return sendNotif(emailNotif, message)
@@ -140,8 +140,9 @@ func DeployOwnCloud(dbpass, dbname, dbuser, ocpass, ocuser, ocemail, ocdomain, o
 				Spec: apiv1.PodSpec{
 					Containers: []apiv1.Container{
 						{
-							Name:  "oc-usr" + ocuser, //-->from variable by user ID
-							Image: "seregant/owncloud-port-80:10.3-latest",
+							Name:            "oc-usr" + ocuser, //-->from variable by user ID
+							Image:           "seregant/owncloud-port-80:10.3-latest",
+							ImagePullPolicy: apiv1.PullAlways,
 							Ports: []apiv1.ContainerPort{
 								{
 									Name:          "owncloud",
