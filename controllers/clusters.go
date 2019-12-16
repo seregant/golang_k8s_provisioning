@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
-	"os/exec"
 	"strconv"
 	"strings"
 
@@ -21,22 +20,22 @@ import (
 )
 
 func Provisioning(dataUser models.Pengguna) bool {
-	// pvName := "volume-" + dataUser.Username
-	// dbPvName := "mysql-pv-" + dataUser.Username
+	pvName := "volume-" + dataUser.Username
+	dbPvName := "mysql-pv-" + dataUser.Username
 	var db = database.DbConnect()
 	defer db.Close()
 	var conf = config.SetConfig()
 	status := CheckClusterAvail()
 	storageSize := strconv.Itoa(dataUser.StorageSize)
 	if status {
-		if /*CreateVol(dbPvName, strconv.Itoa(dataUser.StorageSize))*/ true {
+		if CreateVol(dbPvName, strconv.Itoa(dataUser.StorageSize)) {
 			if DeployDatabase(
 				dataUser.DBpass,
 				dataUser.DBname,
 				dataUser.DBuser,
 				dataUser.Username,
 			) {
-				if /*CreateVol(pvName, strconv.Itoa(dataUser.StorageSize))*/ true {
+				if CreateVol(pvName, strconv.Itoa(dataUser.StorageSize)) {
 					if DeployOwnCloud(
 						dataUser.DBpass,
 						dataUser.DBname,
@@ -64,7 +63,7 @@ func Provisioning(dataUser models.Pengguna) bool {
 }
 
 func CheckClusterAvail() bool {
-	fmt.Println("cek ketersediaan cluster")
+	appConf := config.SetConfig()
 	clientset := config.SetK8sClient()
 
 	api := clientset.CoreV1()
@@ -75,7 +74,7 @@ func CheckClusterAvail() bool {
 		FieldSelector: field,
 	}
 
-	data, err := clientset.RESTClient().Get().AbsPath("apis/metrics.k8s.io/v1beta1/nodes").DoRaw()
+	data, err := clientset.RESTClient().Get().AbsPath("/apis/metrics.k8s.io/v1beta1/nodes").DoRaw()
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -84,12 +83,20 @@ func CheckClusterAvail() bool {
 	usageTotalMem := 0
 	var parsed models.NodesData
 	json.Unmarshal(data, &parsed)
+	// fmt.Println(parsed)
 	for _, dataLoad := range parsed.Items {
-		intCpu, _ := strconv.Atoi(strings.TrimSuffix(dataLoad.Usage.CPU, "m"))
+		intCpu, _ := strconv.Atoi(strings.TrimSuffix(dataLoad.Usage.CPU, "n"))
 		intMem, _ := strconv.Atoi(strings.TrimSuffix(dataLoad.Usage.Memory, "Ki"))
 		usageTotalCpu = usageTotalCpu + intCpu
 		usageTotalMem = usageTotalMem + intMem
-		fmt.Println(intCpu)
+		// fmt.Println(intCpu)
+	}
+
+	if appConf.Debug {
+		fmt.Print("CPU USAGE : ")
+		fmt.Println(usageTotalCpu)
+		fmt.Print("MEMORY USAGE : ")
+		fmt.Println(usageTotalMem)
 	}
 
 	capacityTotalCpu := 0
@@ -101,13 +108,37 @@ func CheckClusterAvail() bool {
 		capacityTotalCpu = capacityTotalCpu + intCpu
 		capacityTotalMem = capacityTotalMem + intMem
 	}
-	//print usage to log
-	// fmt.Println("cpu usage ", usageTotalCpu, " mCores of ", capacityTotalCpu*1000, "mCores")
-	// fmt.Println("memory usage : ", usageTotalMem, " Ki of", capacityTotalMem, "Ki")
 
-	if (capacityTotalCpu*1000)-usageTotalCpu < 500 {
+	if appConf.Debug {
+		fmt.Print("CPU Capacity : ")
+		fmt.Println(capacityTotalCpu)
+		fmt.Print("MEMORY Capacity : ")
+		fmt.Println(capacityTotalMem)
+	}
+
+	memUsagePercent := (usageTotalMem * 100) / capacityTotalMem
+	cpuUsagePercent := (usageTotalCpu * 100) / (capacityTotalCpu * 10000000000)
+
+	if appConf.Debug {
+		fmt.Print("CPU utility : ")
+		fmt.Println(cpuUsagePercent)
+		fmt.Print("MEMORY utility : ")
+		fmt.Println(memUsagePercent)
+	}
+
+	if cpuUsagePercent > 89 {
+		// fmt.Println("cpu penuh")
+		var adminEmail []string
+		adminEmail = append(adminEmail, config.SetConfig().AdminEmail)
+		message := "=====PERHATIAN=====\nKAPASITAS CPU CLUSTER PENUH..!!"
+		sendNotif(adminEmail, message)
 		return false
-	} else if capacityTotalMem-usageTotalMem < 100000 {
+	} else if memUsagePercent > 89 {
+		// fmt.Println("memory penuh")
+		var adminEmail []string
+		adminEmail = append(adminEmail, config.SetConfig().AdminEmail)
+		message := "=====PERHATIAN=====\nKAPASITAS MEMORY CLUSTER PENUH..!!"
+		sendNotif(adminEmail, message)
 		return false
 	} else {
 		return true
@@ -117,7 +148,7 @@ func CheckClusterAvail() bool {
 //jangan lupa buat log untuk setiap deployment yang telah dilakukan di db
 func DeployOwnCloud(dbpass, dbname, dbuser, ocpass, ocuser, ocemail, ocdomain, ocstorage string) bool {
 	fmt.Println("resquest storage : " + ocstorage)
-	// pvName := "volume-" + ocuser
+	pvName := "volume-" + ocuser
 	clientset := config.SetK8sClient()
 	deploymentClient := clientset.AppsV1().Deployments(apiv1.NamespaceDefault)
 	deploy := &appsv1.Deployment{
@@ -155,14 +186,6 @@ func DeployOwnCloud(dbpass, dbname, dbuser, ocpass, ocuser, ocemail, ocdomain, o
 									Name:  "OWNCLOUD_DOMAIN",
 									Value: ocdomain, //-->from variable
 								},
-								// {
-								// 	Name:  "OWNCLOUD_HOST",
-								// 	Value: ocdomain, //-->from variable
-								// },
-								// {
-								// 	Name:  "OWNCLOUD_SUB_URL",
-								// 	Value: "/oc-client/" + ocuser,
-								// },
 								{
 									Name:  "OWNCLOUD_DB_TYPE",
 									Value: "mysql",
@@ -191,14 +214,6 @@ func DeployOwnCloud(dbpass, dbname, dbuser, ocpass, ocuser, ocemail, ocdomain, o
 									Name:  "OWNCLOUD_ADMIN_PASSWORD",
 									Value: ocpass, //-->from variable
 								},
-								// {
-								// 	Name:  "OWNCLOUD_USERNAME",
-								// 	Value: ocuser, //-->from variable
-								// },
-								// {
-								// 	Name:  "OWNCLOUD_PASSWORD",
-								// 	Value: ocpass, //-->from variable
-								// },
 								{
 									Name:  "OWNCLOUD_REDIS_ENABLED",
 									Value: "false", //-->from variable
@@ -216,33 +231,24 @@ func DeployOwnCloud(dbpass, dbname, dbuser, ocpass, ocuser, ocemail, ocdomain, o
 								// 	Value: "443",
 								// },
 							},
-							// Command: []string{
-							// 	"sed",
-							// },
-							// Args: []string{
-							// 	"-i.bak",
-							// 	"s#OC-ROOT-PATH#/oc-client/" + ocuser + "#",
-							// 	"/opt/bitnami/owncloud/config/config.php",
-							// },
-
-							// VolumeMounts: []apiv1.VolumeMount{
-							// 	{
-							// 		Name:      pvName,
-							// 		MountPath: "/var/www/owncloud/data",
-							// 	},
-							// },
+							VolumeMounts: []apiv1.VolumeMount{
+								{
+									Name:      pvName,
+									MountPath: "/var/www/owncloud/data",
+								},
+							},
 						},
 					},
-					// Volumes: []apiv1.Volume{
-					// 	{
-					// 		Name: pvName,
-					// 		VolumeSource: apiv1.VolumeSource{
-					// 			PersistentVolumeClaim: &apiv1.PersistentVolumeClaimVolumeSource{
-					// 				ClaimName: "pvc-" + pvName,
-					// 			},
-					// 		},
-					// 	},
-					// },
+					Volumes: []apiv1.Volume{
+						{
+							Name: pvName,
+							VolumeSource: apiv1.VolumeSource{
+								PersistentVolumeClaim: &apiv1.PersistentVolumeClaimVolumeSource{
+									ClaimName: "pvc-" + pvName,
+								},
+							},
+						},
+					},
 				},
 			},
 		},
@@ -258,7 +264,7 @@ func DeployOwnCloud(dbpass, dbname, dbuser, ocpass, ocuser, ocemail, ocdomain, o
 }
 
 func DeployDatabase(dbpass, dbname, dbuser, ocuser string) bool {
-	// pvName := "mysql-pv-" + ocuser
+	pvName := "mysql-pv-" + ocuser
 	clientset := config.SetK8sClient()
 	deploymentClient := clientset.AppsV1().Deployments(apiv1.NamespaceDefault)
 	deploy := &appsv1.Deployment{
@@ -308,24 +314,25 @@ func DeployDatabase(dbpass, dbname, dbuser, ocuser string) bool {
 									Value: dbpass, //-->from variable
 								},
 							},
-							// VolumeMounts: []apiv1.VolumeMount{
-							// 	{
-							// 		Name:      pvName,
-							// 		MountPath: "/var/lib/mysql",
-							// 	},
-							// },
+							VolumeMounts: []apiv1.VolumeMount{
+								{
+									Name:      pvName,
+									MountPath: "/var/lib/mysql",
+									SubPath:   "mysql",
+								},
+							},
 						},
 					},
-					// Volumes: []apiv1.Volume{
-					// 	{
-					// 		Name: pvName,
-					// 		VolumeSource: apiv1.VolumeSource{
-					// 			PersistentVolumeClaim: &apiv1.PersistentVolumeClaimVolumeSource{
-					// 				ClaimName: "pvc-" + pvName,
-					// 			},
-					// 		},
-					// 	},
-					// },
+					Volumes: []apiv1.Volume{
+						{
+							Name: pvName,
+							VolumeSource: apiv1.VolumeSource{
+								PersistentVolumeClaim: &apiv1.PersistentVolumeClaimVolumeSource{
+									ClaimName: "pvc-" + pvName,
+								},
+							},
+						},
+					},
 				},
 			},
 		},
@@ -455,42 +462,42 @@ func createService(a *appsv1.Deployment, port int32, targetPort int32) bool {
 }
 
 func CreateVol(pvName string, pvSize string) bool {
-	cmd := exec.Command("mkdir", "/opt/oc-data/users/"+pvName)
-	if err := cmd.Run(); err != nil {
-		fmt.Print("Creating nfs folder error : ")
-		fmt.Println(err)
-		return false
-	}
+	// cmd := exec.Command("mkdir", "/opt/oc-data/users/"+pvName)
+	// if err := cmd.Run(); err != nil {
+	// 	fmt.Print("Creating nfs folder error : ")
+	// 	fmt.Println(err)
+	// 	return false
+	// }
 	clientset := config.SetK8sClient()
 	k8sApi := clientset.CoreV1()
 	var volAccModes []apiv1.PersistentVolumeAccessMode
-	volAccModes = append(volAccModes, "ReadWriteMany")
-	volSpec := &apiv1.PersistentVolume{
-		TypeMeta: metav1.TypeMeta{
-			Kind:       "PersistentVolume",
-			APIVersion: "v1",
-		},
-		ObjectMeta: metav1.ObjectMeta{
-			Name: pvName,
-		},
-		Spec: apiv1.PersistentVolumeSpec{
-			Capacity: apiv1.ResourceList{
-				"storage": resource.MustParse(pvSize + "Gi"),
-			},
-			AccessModes:                   volAccModes,
-			PersistentVolumeReclaimPolicy: apiv1.PersistentVolumeReclaimRetain,
-			PersistentVolumeSource: apiv1.PersistentVolumeSource{
-				NFS: &apiv1.NFSVolumeSource{
-					Server: config.SetConfig().ServerIp,
-					Path:   "/opt/oc-data/users/" + pvName,
-				},
-			},
-			ClaimRef: &apiv1.ObjectReference{
-				Name:      "pvc-" + pvName,
-				Namespace: "default",
-			},
-		},
-	}
+	volAccModes = append(volAccModes, "ReadWriteOnce")
+	// volSpec := &apiv1.PersistentVolume{
+	// 	TypeMeta: metav1.TypeMeta{
+	// 		Kind:       "PersistentVolume",
+	// 		APIVersion: "v1",
+	// 	},
+	// 	ObjectMeta: metav1.ObjectMeta{
+	// 		Name: pvName,
+	// 	},
+	// 	Spec: apiv1.PersistentVolumeSpec{
+	// 		Capacity: apiv1.ResourceList{
+	// 			"storage": resource.MustParse(pvSize + "Gi"),
+	// 		},
+	// 		AccessModes:                   volAccModes,
+	// 		PersistentVolumeReclaimPolicy: apiv1.PersistentVolumeReclaimRetain,
+	// 		PersistentVolumeSource: apiv1.PersistentVolumeSource{
+	// 			NFS: &apiv1.NFSVolumeSource{
+	// 				Server: config.SetConfig().ServerIp,
+	// 				Path:   "/opt/oc-data/users/" + pvName,
+	// 			},
+	// 		},
+	// 		ClaimRef: &apiv1.ObjectReference{
+	// 			Name:      "pvc-" + pvName,
+	// 			Namespace: "default",
+	// 		},
+	// 	},
+	// }
 	pvcSpec := &apiv1.PersistentVolumeClaim{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "PersistentVolumeClaim",
@@ -509,22 +516,33 @@ func CreateVol(pvName string, pvSize string) bool {
 		},
 	}
 	fmt.Println("Creating volume and it's pvc....")
-	_, err := k8sApi.PersistentVolumes().Create(volSpec)
-	if err != nil {
-		fmt.Print("Creating volume error : ")
-		fmt.Println(err)
+	// _, err := k8sApi.PersistentVolumes().Create(volSpec)
+	// if err != nil {
+	// 	fmt.Print("Creating volume error : ")
+	// 	fmt.Println(err)
+	// 	return false
+	// } else {
+	// 	fmt.Println("add volume " + pvName + " succeed")
+	// 	_, err2 := k8sApi.PersistentVolumeClaims(apiv1.NamespaceDefault).Create(pvcSpec)
+	// 	if err2 != nil {
+	// 		fmt.Print("Creating volume claim error : ")
+	// 		fmt.Println(err2)
+	// 		return false
+	// 	} else {
+	// 		fmt.Println("add volume claim pvc-" + pvName + " succeed")
+	// 		return true
+	// 	}
+	// }
+
+	//create PVC only for Digitalocean
+	_, err2 := k8sApi.PersistentVolumeClaims(apiv1.NamespaceDefault).Create(pvcSpec)
+	if err2 != nil {
+		fmt.Print("Creating volume claim error : ")
+		fmt.Println(err2)
 		return false
 	} else {
-		fmt.Println("add volume " + pvName + " succeed")
-		_, err2 := k8sApi.PersistentVolumeClaims(apiv1.NamespaceDefault).Create(pvcSpec)
-		if err2 != nil {
-			fmt.Print("Creating volume claim error : ")
-			fmt.Println(err2)
-			return false
-		} else {
-			fmt.Println("add volume claim pvc-" + pvName + " succeed")
-			return true
-		}
+		fmt.Println("add volume claim pvc-" + pvName + " succeed")
+		return true
 	}
 }
 

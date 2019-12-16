@@ -19,6 +19,8 @@ type Config struct {
 	TokenExpTime int64
 	SecretKey    string
 	Domain       string
+	AdminEmail   string
+	Debug        bool
 }
 
 func SetConfig() Config {
@@ -36,11 +38,13 @@ func SetConfig() Config {
 	config.TokenExpTime = 1800
 	config.SecretKey = "KJKJIds6sh"
 	config.Domain = "stidust-web.site"
+	config.AdminEmail = "indrasullivan17@gmail.com"
+	config.Debug = true
 	return config
 }
 
 func SetK8sClient() *kubernetes.Clientset {
-	config, err := clientcmd.BuildConfigFromFlags("", "./cluster-conf")
+	config, err := clientcmd.BuildConfigFromFlags("", "./skripsi-cluster-kubeconfig.yaml")
 	if err != nil {
 		log.Fatal(err)
 	}
