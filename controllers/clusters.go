@@ -131,14 +131,14 @@ func CheckClusterAvail() bool {
 		var adminEmail []string
 		adminEmail = append(adminEmail, config.SetConfig().AdminEmail)
 		message := "=====PERHATIAN=====\nKAPASITAS CPU CLUSTER PENUH..!!"
-		sendNotif(adminEmail, message)
+		sendMail(adminEmail, "CPU CLUSTER PENUH !", message)
 		return false
 	} else if memUsagePercent > 89 {
 		// fmt.Println("memory penuh")
 		var adminEmail []string
 		adminEmail = append(adminEmail, config.SetConfig().AdminEmail)
 		message := "=====PERHATIAN=====\nKAPASITAS MEMORY CLUSTER PENUH..!!"
-		sendNotif(adminEmail, message)
+		sendMail(adminEmail, "MEMORY CLUSTER PENUH..!!", message)
 		return false
 	} else {
 		return true
