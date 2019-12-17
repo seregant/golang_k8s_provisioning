@@ -93,9 +93,9 @@ func CheckClusterAvail() bool {
 	}
 
 	if appConf.Debug {
-		fmt.Print("CPU USAGE : ")
+		fmt.Print("DEBUG || CLUSTER CPU USAGE : ")
 		fmt.Println(usageTotalCpu)
-		fmt.Print("MEMORY USAGE : ")
+		fmt.Print("DEBUG || CLUSTER MEMORY USAGE : ")
 		fmt.Println(usageTotalMem)
 	}
 
@@ -110,9 +110,9 @@ func CheckClusterAvail() bool {
 	}
 
 	if appConf.Debug {
-		fmt.Print("CPU Capacity : ")
+		fmt.Print("DEBUG || CLUSTER CPU Capacity : ")
 		fmt.Println(capacityTotalCpu)
-		fmt.Print("MEMORY Capacity : ")
+		fmt.Print("DEBUG || CLUSTER MEMORY Capacity : ")
 		fmt.Println(capacityTotalMem)
 	}
 
@@ -120,21 +120,27 @@ func CheckClusterAvail() bool {
 	cpuUsagePercent := (usageTotalCpu * 100) / (capacityTotalCpu * 10000000000)
 
 	if appConf.Debug {
-		fmt.Print("CPU utility : ")
-		fmt.Println(cpuUsagePercent)
-		fmt.Print("MEMORY utility : ")
-		fmt.Println(memUsagePercent)
+		fmt.Print("DEBUG || CLUSTER CPU utility : ")
+		fmt.Print(cpuUsagePercent)
+		fmt.Println(" %")
+		fmt.Print("DEBUG || CLUSTER MEMORY utility : ")
+		fmt.Print(memUsagePercent)
+		fmt.Println(" %")
 	}
 
 	if cpuUsagePercent > 89 {
-		// fmt.Println("cpu penuh")
+		if appConf.Debug {
+			fmt.Println("DEBUG || CLUSTER CPU penuh")
+		}
 		var adminEmail []string
 		adminEmail = append(adminEmail, config.SetConfig().AdminEmail)
 		message := "=====PERHATIAN=====\nKAPASITAS CPU CLUSTER PENUH..!!"
 		sendMail(adminEmail, "CPU CLUSTER PENUH !", message)
 		return false
 	} else if memUsagePercent > 89 {
-		// fmt.Println("memory penuh")
+		if appConf.Debug {
+			fmt.Println("DEBUG || CLUSTER Memory penuh")
+		}
 		var adminEmail []string
 		adminEmail = append(adminEmail, config.SetConfig().AdminEmail)
 		message := "=====PERHATIAN=====\nKAPASITAS MEMORY CLUSTER PENUH..!!"
@@ -147,7 +153,9 @@ func CheckClusterAvail() bool {
 
 //jangan lupa buat log untuk setiap deployment yang telah dilakukan di db
 func DeployOwnCloud(dbpass, dbname, dbuser, ocpass, ocuser, ocemail, ocdomain, ocstorage string) bool {
-	fmt.Println("resquest storage : " + ocstorage)
+	if config.SetConfig().Debug {
+		fmt.Println("DEBUG || CLUSTER New resquested storage : " + ocstorage)
+	}
 	pvName := "volume-" + ocuser
 	clientset := config.SetK8sClient()
 	deploymentClient := clientset.AppsV1().Deployments(apiv1.NamespaceDefault)
@@ -253,13 +261,17 @@ func DeployOwnCloud(dbpass, dbname, dbuser, ocpass, ocuser, ocemail, ocdomain, o
 			},
 		},
 	}
-	fmt.Println("Creating deployment...")
+	if config.SetConfig().Debug {
+		fmt.Println("DEBUG || CLUSTER Creating new owncloud deployment...")
+	}
 	deploymentRes, err := deploymentClient.Create(deploy)
 	if err != nil {
 		return false
 		log.Fatal(err)
 	}
-	fmt.Printf("Created deployment %q.\n", deploymentRes.GetObjectMeta().GetName())
+	if config.SetConfig().Debug {
+		fmt.Printf("DEBUG || CLUSTER Created new owncloud deployment %q.\n", deploymentRes.GetObjectMeta().GetName())
+	}
 	return createService(deploy, 80, 80)
 }
 
@@ -337,92 +349,17 @@ func DeployDatabase(dbpass, dbname, dbuser, ocuser string) bool {
 			},
 		},
 	}
-	fmt.Println("Creating deployment...")
+	if config.SetConfig().Debug {
+		fmt.Println("DEBUG || CLUSTER Creating new mysql deployment...")
+	}
 	deploymentRes, err := deploymentClient.Create(deploy)
 	if err != nil {
 		return false
 		log.Fatal(err)
 	}
-	fmt.Printf("Created deployment %q.\n", deploymentRes.GetObjectMeta().GetName())
-	return createService(deploy, 3306, 3306)
-}
-
-func DeployDatabaseMdb(dbpass, dbname, dbuser, ocuser string) bool {
-	// pvName := "mysql-pv-" + ocuser
-	clientset := config.SetK8sClient()
-	deploymentClient := clientset.AppsV1().Deployments(apiv1.NamespaceDefault)
-	deploy := &appsv1.Deployment{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: "mariadb-" + ocuser,
-		},
-		Spec: appsv1.DeploymentSpec{
-			Replicas: int32Ptr(1),
-			Selector: &metav1.LabelSelector{
-				MatchLabels: map[string]string{
-					"app": "mariadb-app-" + ocuser, //-->from user data
-				},
-			},
-			Template: apiv1.PodTemplateSpec{
-				ObjectMeta: metav1.ObjectMeta{
-					Labels: map[string]string{
-						"app": "mariadb-app-" + ocuser,
-					},
-				},
-				Spec: apiv1.PodSpec{
-					Containers: []apiv1.Container{
-						{
-							Name:  "mariadb-usr" + ocuser, //-->from variable by user ID
-							Image: "bitnami/mariadb:10.1",
-							Ports: []apiv1.ContainerPort{
-								{
-									Name:          "mariadb-data",
-									Protocol:      apiv1.ProtocolTCP,
-									ContainerPort: 3306,
-								},
-							},
-							Env: []apiv1.EnvVar{
-								{
-									Name:  "MARIADB_ROOT_PASSWORD",
-									Value: dbpass, //-->from variable
-								},
-								{
-									Name:  "MARIADB_DATABASE",
-									Value: dbname, //-->from variable
-								},
-								{
-									Name:  "MARIADB_ROOT_USER",
-									Value: dbuser, //-->from variable
-								},
-							},
-							// VolumeMounts: []apiv1.VolumeMount{
-							// 	{
-							// 		Name:      pvName,
-							// 		MountPath: "/var/lib/mysql",
-							// 	},
-							// },
-						},
-					},
-					// Volumes: []apiv1.Volume{
-					// 	{
-					// 		Name: pvName,
-					// 		VolumeSource: apiv1.VolumeSource{
-					// 			PersistentVolumeClaim: &apiv1.PersistentVolumeClaimVolumeSource{
-					// 				ClaimName: "pvc-" + pvName,
-					// 			},
-					// 		},
-					// 	},
-					// },
-				},
-			},
-		},
+	if config.SetConfig().Debug {
+		fmt.Printf("DEBUG || CLUSTER Created new mysql deployment %q.\n", deploymentRes.GetObjectMeta().GetName())
 	}
-	fmt.Println("Creating deployment...")
-	deploymentRes, err := deploymentClient.Create(deploy)
-	if err != nil {
-		return false
-		log.Fatal(err)
-	}
-	fmt.Printf("Created deployment %q.\n", deploymentRes.GetObjectMeta().GetName())
 	return createService(deploy, 3306, 3306)
 }
 
@@ -462,42 +399,11 @@ func createService(a *appsv1.Deployment, port int32, targetPort int32) bool {
 }
 
 func CreateVol(pvName string, pvSize string) bool {
-	// cmd := exec.Command("mkdir", "/opt/oc-data/users/"+pvName)
-	// if err := cmd.Run(); err != nil {
-	// 	fmt.Print("Creating nfs folder error : ")
-	// 	fmt.Println(err)
-	// 	return false
-	// }
 	clientset := config.SetK8sClient()
 	k8sApi := clientset.CoreV1()
 	var volAccModes []apiv1.PersistentVolumeAccessMode
 	volAccModes = append(volAccModes, "ReadWriteOnce")
-	// volSpec := &apiv1.PersistentVolume{
-	// 	TypeMeta: metav1.TypeMeta{
-	// 		Kind:       "PersistentVolume",
-	// 		APIVersion: "v1",
-	// 	},
-	// 	ObjectMeta: metav1.ObjectMeta{
-	// 		Name: pvName,
-	// 	},
-	// 	Spec: apiv1.PersistentVolumeSpec{
-	// 		Capacity: apiv1.ResourceList{
-	// 			"storage": resource.MustParse(pvSize + "Gi"),
-	// 		},
-	// 		AccessModes:                   volAccModes,
-	// 		PersistentVolumeReclaimPolicy: apiv1.PersistentVolumeReclaimRetain,
-	// 		PersistentVolumeSource: apiv1.PersistentVolumeSource{
-	// 			NFS: &apiv1.NFSVolumeSource{
-	// 				Server: config.SetConfig().ServerIp,
-	// 				Path:   "/opt/oc-data/users/" + pvName,
-	// 			},
-	// 		},
-	// 		ClaimRef: &apiv1.ObjectReference{
-	// 			Name:      "pvc-" + pvName,
-	// 			Namespace: "default",
-	// 		},
-	// 	},
-	// }
+
 	pvcSpec := &apiv1.PersistentVolumeClaim{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "PersistentVolumeClaim",
@@ -515,39 +421,31 @@ func CreateVol(pvName string, pvSize string) bool {
 			},
 		},
 	}
-	fmt.Println("Creating volume and it's pvc....")
-	// _, err := k8sApi.PersistentVolumes().Create(volSpec)
-	// if err != nil {
-	// 	fmt.Print("Creating volume error : ")
-	// 	fmt.Println(err)
-	// 	return false
-	// } else {
-	// 	fmt.Println("add volume " + pvName + " succeed")
-	// 	_, err2 := k8sApi.PersistentVolumeClaims(apiv1.NamespaceDefault).Create(pvcSpec)
-	// 	if err2 != nil {
-	// 		fmt.Print("Creating volume claim error : ")
-	// 		fmt.Println(err2)
-	// 		return false
-	// 	} else {
-	// 		fmt.Println("add volume claim pvc-" + pvName + " succeed")
-	// 		return true
-	// 	}
-	// }
+
+	if config.SetConfig().Debug {
+		fmt.Println("DEBUG || CLUSTER Creating volume and it's pvc....")
+	}
 
 	//create PVC only for Digitalocean
 	_, err2 := k8sApi.PersistentVolumeClaims(apiv1.NamespaceDefault).Create(pvcSpec)
 	if err2 != nil {
-		fmt.Print("Creating volume claim error : ")
-		fmt.Println(err2)
+		if config.SetConfig().Debug {
+			fmt.Print("DEBUG || CLUSTER Creating volume claim error : ")
+			fmt.Println(err2)
+		}
 		return false
 	} else {
-		fmt.Println("add volume claim pvc-" + pvName + " succeed")
+		if config.SetConfig().Debug {
+			fmt.Println("DEBUG || CLUSTER add volume claim pvc-" + pvName + " succeed")
+		}
 		return true
 	}
 }
 
 func IngressApply() bool {
-	fmt.Println("Updating ingress configuration..")
+	if config.SetConfig().Debug {
+		fmt.Println("DEBUG || CLUSTER Updating ingress configuration..")
+	}
 	var dataUser []models.Pengguna
 	var db = database.DbConnect()
 	defer db.Close()
@@ -598,12 +496,16 @@ func IngressApply() bool {
 
 	_, err := ingressClient.Create(ingressSpec)
 	if err != nil {
-		fmt.Print("Create ingress : ")
-		fmt.Println(err)
+		if config.SetConfig().Debug {
+			fmt.Print("DEBUG || CLUSTER  Create ingress : ")
+			fmt.Println(err)
+		}
 		_, errUpdate := ingressClient.Update(ingressSpec)
 		if errUpdate != nil {
-			fmt.Print("Update ingress : ")
-			fmt.Println(err)
+			if config.SetConfig().Debug {
+				fmt.Print("DEBUG || CLUSTER Update ingress : ")
+				fmt.Println(err)
+			}
 			return false
 		} else {
 			return true

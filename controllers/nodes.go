@@ -44,7 +44,7 @@ func (w *Nodes) GetNodesData(c *gin.Context) {
 			}
 
 			clientset := config.SetK8sClient()
-			data, err := clientset.RESTClient().Get().AbsPath("apis/metrics.k8s.io/v1beta1/nodes").DoRaw()
+			data, err := clientset.RESTClient().Get().AbsPath("/apis/metrics.k8s.io/v1beta1/nodes").DoRaw()
 			if err != nil {
 				log.Fatal(err)
 			}

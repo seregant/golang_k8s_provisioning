@@ -14,7 +14,10 @@ var conf = config.SetConfig()
 
 func DbConnect() *gorm.DB {
 	var addr = conf.DbUser + ":" + conf.DbPass + "@tcp(" + conf.DbHost + ":" + conf.DbPort + ")/" + conf.DbName + "?charset=utf8&parseTime=True&loc=Local"
-	fmt.Println(addr)
+	if conf.Debug {
+		fmt.Print("LOADED DB CONNECTION : ")
+		fmt.Println(addr)
+	}
 	db, err := gorm.Open("mysql", addr)
 	if err != nil {
 		log.Fatal(err)
@@ -28,7 +31,9 @@ func DbInit() {
 	defer db.Close()
 
 	db.Exec("CREATE DATABASE " + conf.DbName)
-	fmt.Println("Creating tables...")
+	if config.SetConfig().Debug {
+		fmt.Println("Creating tables...")
+	}
 
 	db.AutoMigrate(&models.Pengguna{})
 	db.AutoMigrate(&models.ClusterLoad{})

@@ -6,6 +6,7 @@ import (
 	"net/smtp"
 	"strings"
 
+	"github.com/seregant/golang_k8s_provisioning/config"
 	"github.com/seregant/golang_k8s_provisioning/database"
 	"github.com/seregant/golang_k8s_provisioning/models"
 )
@@ -30,12 +31,16 @@ func sendNotif(mailAddr []string, message string) bool {
 		return false
 	}
 
-	log.Println("Mail sent!")
+	if config.SetConfig().Debug {
+		fmt.Println("DEBUG || SEND NOTIF : Notifikasi Email terkirim..!")
+	}
 	return true
 }
 
 func sendMail(to []string, subject, message string) error {
-	fmt.Println("Sending email notification..")
+	if config.SetConfig().Debug {
+		fmt.Println("DEBUG || SEND EMAIL : Proses pengiriman email..")
+	}
 	body := "From: " + CONFIG_EMAIL + "\n" +
 		"To: " + strings.Join(to, ",") + "\n" +
 		"Subject: " + subject + "\n\n" +
@@ -46,8 +51,10 @@ func sendMail(to []string, subject, message string) error {
 
 	err := smtp.SendMail(smtpAddr, auth, CONFIG_EMAIL, to, []byte(body))
 	if err != nil {
-		fmt.Print("Sending email failed : ")
-		fmt.Println(err)
+		if config.SetConfig().Debug {
+			fmt.Print("DEBUG || SEND MAIL : Pengiriman gagal : ")
+			fmt.Println(err)
+		}
 		return err
 	}
 

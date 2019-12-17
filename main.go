@@ -1,10 +1,11 @@
 package main
 
 import (
-	gin "github.com/gin-gonic/gin"
 	_ "github.com/jinzhu/gorm/dialects/mysql"
+	"github.com/gin-gonic/gin"
 	"github.com/seregant/golang_k8s_provisioning/config"
 	"github.com/seregant/golang_k8s_provisioning/controllers"
+	"github.com/seregant/golang_k8s_provisioning/database"
 	"github.com/seregant/golang_k8s_provisioning/middleware"
 )
 
@@ -12,7 +13,7 @@ var conf = config.SetConfig()
 
 func main() {
 
-	// database.DbInit()
+	database.DbInit()
 	penggunaController := new(controllers.Pengguna)
 	clusterController := new(controllers.Nodes)
 	authController := new(controllers.AuthController)

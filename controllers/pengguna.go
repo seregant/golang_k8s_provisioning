@@ -68,7 +68,11 @@ func (w *Pengguna) Add(c *gin.Context) {
 	formData.Password, _ = c.GetPostForm("password")
 	storageSize, _ := c.GetPostForm("storage")
 	formData.StorageSize, _ = strconv.Atoi(storageSize)
-	fmt.Println("req dari frontend " + storageSize)
+
+	if config.SetConfig().Debug {
+		fmt.Println("DEBUG || TAMBAH USER : Req storage dari frontend : " + storageSize)
+	}
+
 	emailPttrn := regexp.MustCompile("^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$")
 	db.Where("pengguna_username =  ?", formData.Username).Find(&penggunaQuery).Count(&countUsername)
 	db.Where("pengguna_email = ?", formData.Email).Find(&penggunaQuery).Count(&countEmail)
@@ -144,7 +148,10 @@ func (w *Pengguna) GetDataPengguna(c *gin.Context) {
 	})
 
 	if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
-		fmt.Println(claims["admin"])
+		if conf.Debug {
+			fmt.Print("DEBUG || GET DATA USER : token yang diterima : ")
+			fmt.Println(claims["admin"])
+		}
 		db.Where("pengguna_email = ?", claims["email"]).Find(&dataUser)
 		dataRes = append(dataRes, models.PenggunaRes{
 			IDPengguna:  dataUser.IDPengguna,

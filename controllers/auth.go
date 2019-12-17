@@ -21,8 +21,14 @@ type AuthController struct{}
 func (w *AuthController) GenerateToken(c *gin.Context) {
 	username, _ := c.GetPostForm("user")
 	password, _ := c.GetPostForm("password")
-	fmt.Println(username)
-	fmt.Println(password)
+
+	if config.SetConfig().Debug {
+		fmt.Print("DEBUG || GET TOKEN USER : ")
+		fmt.Print(username)
+		fmt.Print(", PASSWORD : ")
+		fmt.Println(password)
+	}
+
 	emailPttrn := regexp.MustCompile("^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$")
 	var data models.Pengguna
 	var db = database.DbConnect()
