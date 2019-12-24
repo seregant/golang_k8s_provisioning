@@ -117,7 +117,7 @@ func CheckClusterAvail() bool {
 	}
 
 	memUsagePercent := (usageTotalMem * 100) / capacityTotalMem
-	cpuUsagePercent := (usageTotalCpu * 100) / (capacityTotalCpu * 10000000000)
+	cpuUsagePercent := (usageTotalCpu * 100) / (capacityTotalCpu * 1000000000)
 
 	if appConf.Debug {
 		fmt.Print("DEBUG || CLUSTER CPU utility : ")
@@ -242,7 +242,8 @@ func DeployOwnCloud(dbpass, dbname, dbuser, ocpass, ocuser, ocemail, ocdomain, o
 							VolumeMounts: []apiv1.VolumeMount{
 								{
 									Name:      pvName,
-									MountPath: "/var/www/owncloud/data",
+									MountPath: "/mnt/data/files",
+									SubPath:   ocuser + "-data",
 								},
 							},
 						},
