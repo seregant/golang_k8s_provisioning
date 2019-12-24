@@ -107,7 +107,7 @@ func (w *Pengguna) Add(c *gin.Context) {
 					"status":     "200",
 					"message":    "success",
 					"validation": "false",
-					"details":    "Username already used",
+					"details":    "Username sudah digunakan",
 				})
 			}
 		} else {
@@ -115,7 +115,7 @@ func (w *Pengguna) Add(c *gin.Context) {
 				"status":     "200",
 				"message":    "success",
 				"validation": "false",
-				"details":    "Email already used",
+				"details":    "Email sudah digunakan",
 			})
 		}
 	} else {
@@ -123,7 +123,7 @@ func (w *Pengguna) Add(c *gin.Context) {
 			"status":     "200",
 			"message":    "success",
 			"validation": "false",
-			"details":    "Wrong email format",
+			"details":    "Format email salah",
 		})
 	}
 }
