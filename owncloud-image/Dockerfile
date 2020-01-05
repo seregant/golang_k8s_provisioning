@@ -1,7 +1,7 @@
 FROM owncloud/server:10.3
-RUN rm /etc/owncloud.d/20-config.sh
-COPY 20-config.sh /etc/owncloud.d/20-config.sh
-RUN chmod +x /etc/owncloud.d/20-config.sh
+RUN rm /etc/owncloud.d/55-cron.sh
+COPY 55-cron.sh /etc/owncloud.d/55-cron.sh
+RUN chmod +x /etc/owncloud.d/55-cron.sh
 ENV APACHE_LISTEN 80
 EXPOSE 80
 
