@@ -1,8 +1,8 @@
 package main
 
 import (
-	_ "github.com/jinzhu/gorm/dialects/mysql"
 	"github.com/gin-gonic/gin"
+	_ "github.com/jinzhu/gorm/dialects/mysql"
 	"github.com/seregant/golang_k8s_provisioning/config"
 	"github.com/seregant/golang_k8s_provisioning/controllers"
 	"github.com/seregant/golang_k8s_provisioning/database"
@@ -40,5 +40,9 @@ func main() {
 			cluster.GET("/nodes", middleware.ValidateToken(), clusterController.GetNodesData)
 		}
 	}
+	// var emailNotif []string
+	// emailNotif = append(emailNotif, "indradota17@gmail.com")
+	// message := "Halo, untuk mengakses Owncloud anda silahkan login ke url <br> " + conf.Domain + "/indraag/login"
+	// controllers.SendNotif(emailNotif, message)
 	router.Run(":" + conf.HttpPort)
 }

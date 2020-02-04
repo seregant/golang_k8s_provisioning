@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-echo "Setting up user's rootpath $OWNCLOUD_ROOTPAH.."
-sed -i.bak 's#);#'$OWNCLOUD_ROOTPAH');#' /var/www/owncloud/config/config.php
+echo "Setting up user's rootpath $OWNCLOUD_ROOTPAH.." #>> modifikasi
+sed -i.bak 's#);#'$OWNCLOUD_ROOTPAH');#' /var/www/owncloud/config/config.php #>> modifikasi
 case "${OWNCLOUD_BACKGROUND_MODE}" in
   "ajax")
     echo "Enabling ajax background..."

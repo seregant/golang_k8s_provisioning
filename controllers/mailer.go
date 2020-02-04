@@ -16,7 +16,7 @@ const CONFIG_SMTP_PORT = 587
 const CONFIG_EMAIL = "indra.mailer@gmail.com"
 const CONFIG_PASSWORD = "jfezijcndhvmdgns"
 
-func sendNotif(mailAddr []string, message string) bool {
+func SendNotif(mailAddr []string, message string) bool {
 	var db = database.DbConnect()
 	defer db.Close()
 

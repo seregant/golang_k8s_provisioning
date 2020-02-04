@@ -49,10 +49,10 @@ func Provisioning(dataUser models.Pengguna) bool {
 						db.Create(&dataUser)
 						var emailNotif []string
 						emailNotif = append(emailNotif, dataUser.Email)
-						message := "Halo, untuk mengakses Owncloud anda silahkan login ke url " + conf.Domain + "/" + dataUser.Username + "/login"
+						message := "Halo, untuk mengakses Owncloud anda silahkan login ke url http://" + conf.Domain + "/" + dataUser.Username + "/login dengan username dan password yang sama saat anda lakukan registrasi."
 
 						if IngressApply() {
-							return sendNotif(emailNotif, message)
+							return SendNotif(emailNotif, message)
 						}
 					}
 				}
