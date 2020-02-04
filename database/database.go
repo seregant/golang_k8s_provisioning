@@ -30,7 +30,7 @@ func DbInit() {
 	var db = DbConnect()
 	defer db.Close()
 
-	db.Exec("CREATE DATABASE " + conf.DbName)
+	// db.Exec("CREATE DATABASE " + conf.DbName)
 	if config.SetConfig().Debug {
 		fmt.Println("Creating tables...")
 	}
